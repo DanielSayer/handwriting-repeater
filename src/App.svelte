@@ -32,7 +32,6 @@
   let replayNonce = 0;
   let replayTimer: ReturnType<typeof setTimeout> | undefined;
   let guideDialogOpen = false;
-  let status = 'Ready to write';
 
   $: replayDuration = Math.max(0.7, 4.6 - speed * 0.65);
   $: persistedState = {
@@ -56,9 +55,7 @@
     try {
       const saved = loadBoard();
       if (saved) restoreBoard(saved);
-    } catch {
-      status = 'Started a fresh board';
-    }
+    } catch { /* Invalid saved data falls back to the default board. */ }
     hydrated = true;
     return () => clearTimeout(replayTimer);
   });
@@ -82,7 +79,6 @@
   function addStroke(stroke: BoardStroke): void {
     strokes = [...strokes, stroke];
     redoStack = [];
-    status = 'Saved in this browser';
   }
 
   function undo(): void {
@@ -90,7 +86,6 @@
     if (!stroke) return;
     redoStack = [...redoStack, stroke];
     strokes = strokes.slice(0, -1);
-    status = 'Last stroke undone';
   }
 
   function redo(): void {
@@ -98,7 +93,6 @@
     if (!stroke) return;
     strokes = [...strokes, stroke];
     redoStack = redoStack.slice(0, -1);
-    status = 'Stroke restored';
   }
 
   function clearBoard(): void {
@@ -107,7 +101,6 @@
     redoStack = [];
     guideText = '';
     stopReplay();
-    status = 'Board cleared';
   }
 
   function stopReplay(): void {
@@ -117,7 +110,6 @@
 
   async function replay(): Promise<void> {
     if (!strokes.length) {
-      status = 'Add a few strokes first';
       return;
     }
 
@@ -125,13 +117,11 @@
     await tick();
     replayNonce += 1;
     replaying = true;
-    status = loopMode ? 'Looping your handwriting' : 'Replaying your handwriting';
 
     replayTimer = setTimeout(() => {
       replaying = false;
       if (loopMode) void replay();
-      else status = 'Replay complete';
-    }, replayDuration * 1000 + 320);
+    }, replayDuration * 1000 + 80);
   }
 
   function placeGuide(text: string, rows: number, size: number): void {
@@ -139,7 +129,6 @@
     repeatCount = Math.max(1, Math.min(8, rows));
     guideSize = size;
     guideDialogOpen = false;
-    status = guideText ? 'Guide placed — trace away' : 'Guide removed';
   }
 
   function exportBoard(): void {
@@ -154,10 +143,7 @@
         repeatCount,
         guideSize
       });
-      status = 'PNG saved locally';
-    } catch {
-      status = 'This browser could not save the board';
-    }
+    } catch { /* Export is best-effort when browser canvas APIs are unavailable. */ }
   }
 </script>
 
@@ -186,7 +172,6 @@
         {guideText}
         {repeatCount}
         {guideSize}
-        {status}
         canUndo={strokes.length > 0}
         canRedo={redoStack.length > 0}
         canClear={strokes.length > 0 || Boolean(guideText)}

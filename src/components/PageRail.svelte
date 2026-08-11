@@ -42,11 +42,6 @@
     <span class="tool-icon">↓</span>
     <span><strong>Save board</strong><small>Download a PNG</small></span>
   </button>
-
-  <div class="local-card">
-    <span>⌁</span>
-    <p><strong>Browser local</strong>Your board is stored only on this device.</p>
-  </div>
 </aside>
 
 <style>
@@ -101,15 +96,9 @@
   .paper-options button.active { box-shadow: 0 0 0 2px var(--ink); border-color: #fff; }
   .export-tool { margin-top: 22px; }
   .export-tool .tool-icon { background: #dcf1ea; color: #137962; }
-  .local-card { margin-top: 16px; padding: 11px; display: flex; gap: 9px; border-radius: 13px; background: #efede6; color: #777e88; }
-  .local-card > span { color: var(--green); font-size: 20px; }
-  .local-card p { margin: 0; font-size: 10px; line-height: 1.45; }
-  .local-card strong { display: block; color: #5c646e; margin-bottom: 2px; }
-
   @media (max-width: 900px) {
     .page-rail { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-    .page-group, .export-tool, .local-card { margin-top: 0; }
-    .local-card { display: none; }
+    .page-group, .export-tool { margin-top: 0; }
   }
   @media (max-width: 620px) {
     .page-rail { grid-template-columns: 1fr 1fr; padding: 10px; }
