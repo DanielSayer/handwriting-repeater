@@ -1,6 +1,9 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
+  import AnimatedPen from './AnimatedPen.svelte';
   import { createGuideRows, pointFromPointer, smoothPath } from '../lib/drawing';
+  import { createReplaySchedule } from '../lib/replay';
+  import type { StrokeReplayTiming } from '../lib/replay';
   import type { BoardStroke, LineStyle, PenType } from '../lib/types';
 
   export let strokes: BoardStroke[];
@@ -33,8 +36,18 @@
   let boardHeight = 560;
   let currentStroke: BoardStroke | null = null;
   let drawing = false;
+  let replayPaths: SVGPathElement[] = [];
+  let penAnimationFrame: number | undefined;
+  let penVisible = false;
+  let penX = 0;
+  let penY = 0;
+  let penRotation = -55;
+  let animatedPenColour = penColour;
 
   $: guideRows = createGuideRows(guideText, repeatCount);
+  $: replaySchedule = createReplaySchedule(strokes, replayDuration);
+  $: if (replaying) void startPenAnimation(replayNonce);
+  $: if (!replaying) stopPenAnimation();
 
   onMount(() => {
     const observer = new ResizeObserver(([entry]) => {
@@ -43,8 +56,73 @@
       onResize(boardWidth, boardHeight);
     });
     observer.observe(boardShell);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      stopPenAnimation();
+    };
   });
+
+  async function startPenAnimation(_nonce: number): Promise<void> {
+    stopPenAnimation();
+    await tick();
+
+    const startedAt = performance.now();
+    const frame = (timestamp: number): void => {
+      const elapsedSeconds = (timestamp - startedAt) / 1000;
+      const activeIndex = findActiveStroke(elapsedSeconds);
+
+      if (activeIndex >= 0) updatePenPosition(activeIndex, elapsedSeconds);
+      else penVisible = false;
+
+      penAnimationFrame = requestAnimationFrame(frame);
+    };
+    penAnimationFrame = requestAnimationFrame(frame);
+  }
+
+  function stopPenAnimation(): void {
+    if (penAnimationFrame !== undefined) cancelAnimationFrame(penAnimationFrame);
+    penAnimationFrame = undefined;
+    penVisible = false;
+  }
+
+  function findActiveStroke(elapsedSeconds: number): number {
+    for (let index = strokes.length - 1; index >= 0; index -= 1) {
+      const timing = timingFor(index);
+      if (
+        elapsedSeconds >= timing.delaySeconds &&
+        elapsedSeconds <= timing.delaySeconds + timing.durationSeconds
+      ) return index;
+    }
+    return -1;
+  }
+
+  function updatePenPosition(index: number, elapsedSeconds: number): void {
+    const path = replayPaths[index];
+    const stroke = strokes[index];
+    if (!path || !stroke) return;
+
+    const timing = timingFor(index);
+    const estimatedProgress = (elapsedSeconds - timing.delaySeconds) / timing.durationSeconds;
+    const renderedDashOffset = Number.parseFloat(getComputedStyle(path).strokeDashoffset);
+    const progress = Math.min(1, Math.max(0,
+      Number.isFinite(renderedDashOffset) ? 1 - renderedDashOffset : estimatedProgress
+    ));
+    const length = path.getTotalLength();
+    const distance = length * progress;
+    const point = path.getPointAtLength(distance);
+    const nearbyPoint = path.getPointAtLength(Math.min(length, distance + Math.max(1, length * 0.01)));
+    const tangentAngle = Math.atan2(nearbyPoint.y - point.y, nearbyPoint.x - point.x) * (180 / Math.PI);
+
+    penX = point.x;
+    penY = point.y;
+    penRotation = -55 + Math.max(-45, Math.min(45, tangentAngle)) * 0.18;
+    animatedPenColour = stroke.colour;
+    penVisible = true;
+  }
+
+  function timingFor(index: number): StrokeReplayTiming {
+    return replaySchedule[index] ?? { delaySeconds: 0, durationSeconds: replayDuration };
+  }
 
   function startStroke(event: PointerEvent): void {
     if (event.button !== 0 || replaying) return;
@@ -118,6 +196,8 @@
         <g class:replaying>
           {#each strokes as stroke, index (stroke.id)}
             <path
+              bind:this={replayPaths[index]}
+              class="replay-path"
               d={smoothPath(stroke.points, boardWidth, boardHeight)}
               fill="none"
               stroke={stroke.colour}
@@ -126,11 +206,20 @@
               stroke-linecap="round"
               stroke-linejoin="round"
               pathLength="1"
-              style={`--delay:${index * (replayDuration / Math.max(1, strokes.length))}s;--duration:${Math.max(0.35, replayDuration / Math.max(1, strokes.length) + 0.35)}s`}
+              style={`--delay:${timingFor(index).delaySeconds}s;--duration:${timingFor(index).durationSeconds}s`}
             />
           {/each}
         </g>
       {/key}
+      {#if penVisible}
+        <AnimatedPen
+          x={penX}
+          y={penY}
+          rotation={penRotation}
+          colour={animatedPenColour}
+          scale={Math.max(0.72, Math.min(1.05, boardWidth / 950))}
+        />
+      {/if}
       {#if currentStroke}
         <path
           d={smoothPath(currentStroke.points, boardWidth, boardHeight)}
@@ -219,6 +308,6 @@
   .empty-prompt > span { font-size: 38px; transform: rotate(-10deg); }
   .empty-prompt p { margin: 7px 0 3px; font: 26px "Comic Sans MS", "Segoe Print", cursive; color: #747d84; }
   .empty-prompt small { font-size: 11px; }
-  .replaying path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw-stroke var(--duration) ease-out var(--delay) forwards; }
+  .replaying path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw-stroke var(--duration) linear var(--delay) forwards; }
   @keyframes draw-stroke { to { stroke-dashoffset: 0; } }
 </style>

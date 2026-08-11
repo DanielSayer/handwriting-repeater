@@ -12,9 +12,6 @@
     <h1>Repeat</h1>
     <p>handwriting whiteboard</p>
   </div>
-  <div class="privacy-note" title="This app does not send your writing anywhere">
-    <span aria-hidden="true">●</span> Private to this browser
-  </div>
 </header>
 
 <style>
@@ -48,25 +45,10 @@
   }
   .brand-copy h1 { margin: 0; font-size: 23px; letter-spacing: -0.5px; line-height: 1; }
   .brand-copy p { margin: 5px 0 0; color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
-  .privacy-note {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #3f665f;
-    font-size: 12px;
-    background: #e7f4ef;
-    border: 1px solid #c7e2d9;
-    padding: 8px 12px;
-    border-radius: 999px;
-  }
-  .privacy-note span { color: var(--green); font-size: 9px; }
-
   @media (max-width: 620px) {
     .topbar { height: 68px; padding: 10px 13px; }
     .brand-mark { width: 42px; height: 42px; }
     .brand-copy h1 { font-size: 20px; }
     .brand-copy p { display: none; }
-    .privacy-note { padding: 7px 9px; font-size: 10px; }
   }
 </style>

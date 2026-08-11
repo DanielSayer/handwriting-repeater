@@ -131,7 +131,7 @@
       replaying = false;
       if (loopMode) void replay();
       else status = 'Replay complete';
-    }, replayDuration * 1000 + 320);
+    }, replayDuration * 1000 + 80);
   }
 
   function placeGuide(text: string, rows: number, size: number): void {
