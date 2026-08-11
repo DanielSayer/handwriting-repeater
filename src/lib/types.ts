@@ -14,6 +14,11 @@ export interface BoardStroke {
   points: Point[];
 }
 
+export interface BoardBackground {
+  src: string;
+  name: string;
+}
+
 export interface PaperOption {
   name: string;
   value: string;
@@ -27,6 +32,8 @@ export interface GuideRow {
 
 export interface PersistedBoardState {
   strokes: BoardStroke[];
+  backgroundImage: BoardBackground | null;
+  backgroundOpacity: number;
   penColour: string;
   penSize: number;
   penType: PenType;
@@ -43,6 +50,8 @@ export interface PersistedBoardState {
 
 export interface ExportBoardOptions {
   strokes: BoardStroke[];
+  backgroundImage: BoardBackground | null;
+  backgroundOpacity: number;
   boardWidth: number;
   boardHeight: number;
   pageColour: string;

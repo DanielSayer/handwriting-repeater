@@ -7,12 +7,17 @@
   import PlaybackBar from './components/PlaybackBar.svelte';
   import ToolRail from './components/ToolRail.svelte';
   import { DEFAULT_BOARD_STATE } from './lib/constants';
+  import { prepareBackgroundImage } from './lib/backgroundImage';
   import { downloadBoardPng } from './lib/exportBoard';
   import { loadBoard, saveBoard } from './lib/storage';
-  import type { BoardStroke, LineStyle, PenType, PersistedBoardState } from './lib/types';
+  import type { BoardBackground, BoardStroke, LineStyle, PenType, PersistedBoardState } from './lib/types';
 
   let hydrated = false;
   let strokes: BoardStroke[] = [];
+  let backgroundImage: BoardBackground | null = DEFAULT_BOARD_STATE.backgroundImage;
+  let backgroundOpacity = DEFAULT_BOARD_STATE.backgroundOpacity;
+  let backgroundLoading = false;
+  let backgroundError = '';
   let redoStack: BoardStroke[] = [];
   let penColour = DEFAULT_BOARD_STATE.penColour;
   let penSize = DEFAULT_BOARD_STATE.penSize;
@@ -36,6 +41,8 @@
   $: replayDuration = Math.max(0.7, 4.6 - speed * 0.65);
   $: persistedState = {
     strokes,
+    backgroundImage,
+    backgroundOpacity,
     penColour,
     penSize,
     penType,
@@ -49,7 +56,9 @@
     repeatCount,
     guideSize
   } satisfies PersistedBoardState;
-  $: if (hydrated) saveBoard(persistedState);
+  $: if (hydrated) {
+    try { saveBoard(persistedState); } catch { /* Large browser-local boards may exceed the storage quota. */ }
+  }
 
   onMount(() => {
     try {
@@ -62,6 +71,8 @@
 
   function restoreBoard(saved: Partial<PersistedBoardState>): void {
     strokes = saved.strokes ?? strokes;
+    backgroundImage = saved.backgroundImage ?? backgroundImage;
+    backgroundOpacity = saved.backgroundOpacity ?? backgroundOpacity;
     penColour = saved.penColour ?? penColour;
     penSize = saved.penSize ?? penSize;
     penType = saved.penType ?? penType;
@@ -131,10 +142,30 @@
     guideDialogOpen = false;
   }
 
-  function exportBoard(): void {
+  async function setBackground(file: File): Promise<void> {
+    backgroundLoading = true;
+    backgroundError = '';
+
     try {
-      downloadBoardPng({
+      backgroundImage = await prepareBackgroundImage(file);
+    } catch (error) {
+      backgroundError = error instanceof Error ? error.message : 'That image could not be added.';
+    } finally {
+      backgroundLoading = false;
+    }
+  }
+
+  function removeBackground(): void {
+    backgroundImage = null;
+    backgroundError = '';
+  }
+
+  async function exportBoard(): Promise<void> {
+    try {
+      await downloadBoardPng({
         strokes,
+        backgroundImage,
+        backgroundOpacity,
         boardWidth,
         boardHeight,
         pageColour,
@@ -172,6 +203,10 @@
         {guideText}
         {repeatCount}
         {guideSize}
+        {backgroundImage}
+        bind:backgroundOpacity
+        {backgroundLoading}
+        {backgroundError}
         canUndo={strokes.length > 0}
         canRedo={redoStack.length > 0}
         canClear={strokes.length > 0 || Boolean(guideText)}
@@ -180,6 +215,8 @@
         onUndo={undo}
         onRedo={redo}
         onClear={clearBoard}
+        onBackgroundSelected={(file) => void setBackground(file)}
+        onRemoveBackground={removeBackground}
       />
       <PlaybackBar bind:zoom bind:speed {replaying} onReplay={replay} onStop={stopReplay} />
     </section>

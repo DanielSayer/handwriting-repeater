@@ -1,7 +1,7 @@
 import { createGuideRows } from './drawing';
 import type { ExportBoardOptions, LineStyle } from './types';
 
-export function downloadBoardPng(options: ExportBoardOptions): void {
+export async function downloadBoardPng(options: ExportBoardOptions): Promise<void> {
   const width = 1600;
   const height = Math.round(width * (options.boardHeight / options.boardWidth));
   const canvas = document.createElement('canvas');
@@ -12,6 +12,7 @@ export function downloadBoardPng(options: ExportBoardOptions): void {
   if (!context) throw new Error('Canvas export is not supported by this browser.');
 
   drawBackground(context, width, height, options.pageColour, options.lineStyle);
+  await drawBackgroundImage(context, width, height, options);
   drawGuide(context, width, height, options);
   drawStrokes(context, width, height, options);
 
@@ -19,6 +20,34 @@ export function downloadBoardPng(options: ExportBoardOptions): void {
   link.download = 'my-handwriting.png';
   link.href = canvas.toDataURL('image/png');
   link.click();
+}
+
+async function drawBackgroundImage(
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  options: ExportBoardOptions
+): Promise<void> {
+  if (!options.backgroundImage) return;
+
+  const image = await loadImage(options.backgroundImage.src);
+  const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+  const imageWidth = image.naturalWidth * scale;
+  const imageHeight = image.naturalHeight * scale;
+
+  context.save();
+  context.globalAlpha = options.backgroundOpacity;
+  context.drawImage(image, (width - imageWidth) / 2, (height - imageHeight) / 2, imageWidth, imageHeight);
+  context.restore();
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('The background image could not be exported.'));
+    image.src = src;
+  });
 }
 
 function drawBackground(
