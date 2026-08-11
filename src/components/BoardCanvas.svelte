@@ -20,7 +20,6 @@
   export let guideText: string;
   export let repeatCount: number;
   export let guideSize: number;
-  export let status: string;
   export let canUndo: boolean;
   export let canRedo: boolean;
   export let canClear: boolean;
@@ -161,7 +160,6 @@
 </script>
 
 <div class="board-topline">
-  <p><span class="status-dot"></span>{drawing ? 'Writing…' : status}</p>
   <div class="history-actions">
     <button on:click={onUndo} disabled={!canUndo} aria-label="Undo" title="Undo">↶</button>
     <button on:click={onRedo} disabled={!canRedo} aria-label="Redo" title="Redo">↷</button>
@@ -243,9 +241,7 @@
 </div>
 
 <style>
-  .board-topline { display: flex; justify-content: space-between; align-items: center; padding: 0 8px; }
-  .board-topline p { margin: 0; color: #697282; font-size: 12px; }
-  .status-dot { display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: var(--green); }
+  .board-topline { display: flex; justify-content: flex-end; align-items: center; padding: 0 8px; }
   .history-actions { display: flex; gap: 5px; }
   .history-actions button {
     border: 0;
