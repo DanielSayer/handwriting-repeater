@@ -1,4 +1,4 @@
 node_modules/
 dist/
-.vite-test*.log
+.vite-*.log
 .DS_Store
