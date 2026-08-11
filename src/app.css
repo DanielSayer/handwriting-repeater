@@ -1,0 +1,32 @@
+:root {
+  font-family: Inter, ui-rounded, "Segoe UI", system-ui, sans-serif;
+  color: #18243d;
+  background: #ebe8df;
+  font-synthesis: none;
+  --ink: #18243d;
+  --muted: #6e7787;
+  --accent: #ea6c4d;
+  --green: #19967e;
+  --panel: #f8f6f0;
+  --line: #d7d2c7;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; overflow: hidden; }
+button, input, textarea, select { font: inherit; }
+button { color: inherit; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 3px solid rgba(53, 105, 232, 0.32);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  body { overflow: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+  }
+}
