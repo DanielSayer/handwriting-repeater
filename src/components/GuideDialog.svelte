@@ -57,9 +57,9 @@
 
 <style>
   .modal-backdrop { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(30, 36, 48, 0.32); backdrop-filter: blur(2px); }
-  .text-panel { width: min(540px, 100%); padding: 22px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); box-shadow: 0 24px 60px rgba(30, 36, 48, 0.25); }
+  .text-panel { width: min(540px, 100%); padding: 22px; border: 1.5px solid var(--line); border-radius: 14px 18px 13px 17px; background: var(--panel); box-shadow: 5px 6px 0 rgba(37, 48, 68, .12), 0 24px 60px rgba(30, 36, 48, 0.2); }
   .panel-header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
-  .panel-header h2 { margin: 0 0 18px; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .panel-header h2 { margin: 0 0 18px; font: 700 22px var(--hand); letter-spacing: -0.01em; transform: rotate(-.5deg); }
   .panel-header > button {
     width: 32px;
     height: 32px;
@@ -72,7 +72,7 @@
     cursor: pointer;
   }
   .panel-header > button:hover { background: #f0ede4; color: var(--ink); }
-  .field-label, .form-grid span, .preset-row > span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+  .field-label, .form-grid span, .preset-row > span { display: block; margin-bottom: 6px; color: var(--muted); font: 700 12px var(--hand); letter-spacing: .02em; }
   textarea, input, select { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
   textarea:focus, input:focus, select:focus { border-color: var(--ink); outline: none; }
   textarea { resize: vertical; padding: 12px; font: 20px var(--hand); }

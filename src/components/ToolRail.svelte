@@ -52,10 +52,10 @@
 
   <div class="rail-section mode-section">
     <span class="rail-heading">Modes</span>
-    <button class="mode-button" class:active={traceMode} on:click={() => (traceMode = !traceMode)}>
+    <button class="mode-button" class:active={traceMode} on:click={() => (traceMode = !traceMode)} aria-label="Trace mode" title="Trace mode">
       <Icon name="trace" /><span>Trace</span>
     </button>
-    <button class="mode-button" class:active={loopMode} on:click={() => (loopMode = !loopMode)}>
+    <button class="mode-button" class:active={loopMode} on:click={() => (loopMode = !loopMode)} aria-label="Loop replay" title="Loop replay">
       <Icon name="loop" /><span>Loop</span>
     </button>
   </div>
@@ -67,8 +67,8 @@
     padding: 14px 12px;
     overflow: auto;
     background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
+    border: 1.5px solid var(--line);
+    border-radius: 13px 17px 12px 16px;
     box-shadow: var(--shadow-panel);
   }
   .rail-section + .rail-section { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
@@ -76,23 +76,23 @@
     display: block;
     margin-bottom: 8px;
     color: var(--muted);
-    font-size: 10px;
+    font-family: var(--hand);
+    font-size: 13px;
     line-height: 1;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.02em;
   }
   .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .segmented button, .size-options button {
     display: grid;
     place-items: center;
-    border: 1px solid var(--line);
+    border: 1.5px solid var(--line);
     background: var(--paper);
-    border-radius: 8px;
+    border-radius: 8px 10px 7px 11px;
     min-height: 38px;
     cursor: pointer;
   }
-  .segmented button:hover, .size-options button:hover { border-color: var(--ink); }
+  .segmented button:hover, .size-options button:hover { border-color: var(--ink); transform: rotate(-1deg); }
   .segmented button.active, .size-options button.active {
     color: #fff;
     border-color: var(--ink);
@@ -104,12 +104,13 @@
   .colour-grid button {
     aspect-ratio: 1;
     border: 0;
-    border-radius: 50%;
+    border-radius: 48% 53% 46% 55%;
     background: var(--swatch);
     box-shadow: inset 0 0 0 1px rgba(30, 36, 48, 0.12);
     cursor: pointer;
   }
-  .colour-grid button:hover { transform: scale(1.06); }
+  .colour-grid button:nth-child(even) { border-radius: 55% 45% 52% 47%; transform: rotate(4deg); }
+  .colour-grid button:hover { transform: scale(1.06) rotate(-2deg); }
   .colour-grid button.active { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--ink); }
   .mode-section { display: grid; gap: 7px; }
   .mode-section .rail-heading { grid-column: 1 / -1; }
@@ -118,21 +119,23 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    border: 1px solid var(--line);
+    border: 1.5px solid var(--line);
     background: var(--paper);
-    border-radius: 8px;
+    border-radius: 8px 11px 7px 10px;
     padding: 8px 10px;
     font-size: 12px;
     font-weight: 650;
     cursor: pointer;
     color: var(--ink);
   }
-  .mode-button:hover { border-color: var(--ink); }
-  .mode-button.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .mode-button:hover { border-color: var(--ink); transform: rotate(-.5deg); }
+  .mode-button.active { background: var(--ink); border-color: var(--ink); color: #fff; transform: rotate(-.7deg); }
 
   @media (max-width: 620px) {
     .tool-rail { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 9px; }
     .rail-section + .rail-section { border: 0; margin: 0; padding: 0; }
     .mode-section { grid-template-columns: 1fr 1fr; }
+    .mode-button { justify-content: center; padding: 8px 5px; }
+    .mode-button span { display: none; }
   }
 </style>

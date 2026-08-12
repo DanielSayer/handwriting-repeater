@@ -117,8 +117,8 @@
     padding: 14px;
     overflow: auto;
     background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
+    border: 1.5px solid var(--line);
+    border-radius: 16px 12px 17px 13px;
     box-shadow: var(--shadow-panel);
   }
   .page-tool {
@@ -128,20 +128,20 @@
     gap: 10px;
     padding: 10px;
     text-align: left;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
+    border: 1.5px solid var(--line);
+    border-radius: 9px 12px 8px 11px;
     background: var(--paper);
     cursor: pointer;
     transition: border-color 0.15s ease, transform 0.15s ease;
   }
-  .page-tool:hover { border-color: var(--ink); }
+  .page-tool:hover { border-color: var(--ink); transform: rotate(-.5deg); }
   .tool-icon {
     width: 34px;
     height: 34px;
     display: grid;
     place-items: center;
     flex: 0 0 auto;
-    border-radius: 8px;
+    border-radius: 47% 53% 44% 56%;
     background: #f0ede4;
     color: var(--ink);
   }
@@ -153,11 +153,11 @@
     display: block;
     margin-bottom: 8px;
     color: var(--muted);
-    font-size: 10px;
+    font-family: var(--hand);
+    font-size: 13px;
     line-height: 1;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.02em;
   }
   .line-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
   .line-options button {
@@ -165,14 +165,15 @@
     padding: 6px;
     display: grid;
     place-items: center;
-    border: 1px solid var(--line);
+    border: 1.5px solid var(--line);
     background: var(--paper);
-    border-radius: 8px;
+    border-radius: 8px 10px 7px 11px;
     cursor: pointer;
   }
-  .line-options button:hover { border-color: var(--ink); }
+  .line-options button:nth-child(even) { transform: rotate(1deg); }
+  .line-options button:hover { border-color: var(--ink); transform: rotate(-1deg); }
   .line-options button.active { border-color: var(--ink); background: var(--ink); }
-  .line-icon { width: 24px; height: 22px; border-radius: 3px; background-color: #fff; display: block; }
+  .line-icon { width: 24px; height: 22px; border-radius: 3px 5px 2px 4px; background-color: #fff; display: block; }
   .line-icon.ruled { background-image: repeating-linear-gradient(to bottom, transparent 0 5px, #6e92ae 6px 7px); }
   .line-icon.dotted { background-image: radial-gradient(#6e92ae 1px, transparent 1.2px); background-size: 5px 7px; }
   .line-icon.grid { background-image: linear-gradient(#8ca7ba 1px,transparent 1px),linear-gradient(90deg,#8ca7ba 1px,transparent 1px); background-size: 7px 7px; }
@@ -180,12 +181,13 @@
   .paper-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .paper-options button {
     aspect-ratio: 1;
-    border: 1px solid var(--line);
-    border-radius: 8px;
+    border: 1.5px solid var(--line);
+    border-radius: 48% 52% 46% 54%;
     background: var(--paper-swatch);
     cursor: pointer;
   }
-  .paper-options button:hover { border-color: var(--ink); }
+  .paper-options button:nth-child(even) { border-radius: 54% 46% 52% 48%; transform: rotate(2deg); }
+  .paper-options button:hover { border-color: var(--ink); transform: rotate(-2deg); }
   .paper-options button.active { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--ink); }
 
   .background-add {
@@ -195,15 +197,15 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    border: 1.5px dashed #c6c0b1;
-    border-radius: var(--radius);
+    border: 1.5px dashed #bcb4a2;
+    border-radius: 9px 12px 8px 11px;
     background: transparent;
     color: var(--ink);
     font-size: 12px;
     font-weight: 650;
     cursor: pointer;
   }
-  .background-add:hover:not(:disabled) { border-color: var(--ink); background: var(--paper); }
+  .background-add:hover:not(:disabled) { border-color: var(--ink); background: var(--paper); transform: rotate(-.4deg); }
   .background-add:disabled { opacity: 0.55; cursor: wait; }
   .background-hint { margin: 6px 2px 0; color: var(--muted); font-size: 10px; text-align: center; }
   .background-card {
