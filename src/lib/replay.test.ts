@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createReplaySchedule, replayDuration, strokeReplayProgress } from './replay';
+import {
+  createReplaySchedule,
+  playbackRateForSpeed,
+  replayDuration,
+  strokeReplayProgress
+} from './replay';
 import type { BoardStroke, Point } from './types';
 
 function stroke(points: Point[]): BoardStroke {
@@ -11,6 +16,16 @@ function stroke(points: Point[]): BoardStroke {
     points
   };
 }
+
+describe('playbackRateForSpeed', () => {
+  it('adds slower rates while preserving the existing slider positions', () => {
+    expect(playbackRateForSpeed(-1)).toBeCloseTo(0.25);
+    expect(playbackRateForSpeed(0)).toBeCloseTo(0.3536);
+    expect(playbackRateForSpeed(1)).toBeCloseTo(0.5);
+    expect(playbackRateForSpeed(3)).toBe(1);
+    expect(playbackRateForSpeed(5)).toBe(2);
+  });
+});
 
 describe('createReplaySchedule', () => {
   it('returns no timings for an empty board', () => {

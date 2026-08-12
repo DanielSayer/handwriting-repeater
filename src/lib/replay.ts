@@ -8,6 +8,10 @@ export interface StrokeReplayTiming {
 const LEGACY_REPLAY_DURATION_SECONDS = 2.65;
 const MINIMUM_STROKE_DURATION_SECONDS = 0.04;
 
+export function playbackRateForSpeed(speed: number): number {
+  return 2 ** ((speed - 3) / 2);
+}
+
 export function createReplaySchedule(
   strokes: BoardStroke[],
   playbackRate: number

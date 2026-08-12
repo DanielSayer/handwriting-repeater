@@ -1,11 +1,14 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
+  import { playbackRateForSpeed } from '../lib/replay';
 
   export let zoom: number;
   export let speed: number;
   export let replaying: boolean;
   export let onReplay: () => void;
   export let onStop: () => void;
+
+  $: playbackRateLabel = `${playbackRateForSpeed(speed).toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}\u00d7`;
 </script>
 
 <div class="playback-bar">
@@ -18,8 +21,16 @@
     {replaying ? 'Stop' : 'Rewrite'}
   </button>
   <label>
-    <span>Write speed</span>
-    <input type="range" min="1" max="5" step="1" bind:value={speed} />
+    <span>Write speed {playbackRateLabel}</span>
+    <input
+      type="range"
+      min="-1"
+      max="5"
+      step="1"
+      bind:value={speed}
+      aria-label={`Write speed ${playbackRateLabel}`}
+      aria-valuetext={playbackRateLabel}
+    />
   </label>
 </div>
 

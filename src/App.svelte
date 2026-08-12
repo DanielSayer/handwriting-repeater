@@ -9,7 +9,11 @@
   import { DEFAULT_BOARD_STATE } from './lib/constants';
   import { prepareBackgroundImage } from './lib/backgroundImage';
   import { downloadBoardPng } from './lib/exportBoard';
-  import { createReplaySchedule, replayDuration as getReplayDuration } from './lib/replay';
+  import {
+    createReplaySchedule,
+    playbackRateForSpeed,
+    replayDuration as getReplayDuration
+  } from './lib/replay';
   import { loadBoard, saveBoard } from './lib/storage';
   import type {
     BoardBackground,
@@ -45,7 +49,7 @@
   let replayTimer: ReturnType<typeof setTimeout> | undefined;
   let guideDialogOpen = false;
 
-  $: playbackRate = 2 ** ((speed - 3) / 2);
+  $: playbackRate = playbackRateForSpeed(speed);
   $: replayDuration = getReplayDuration(createReplaySchedule(strokes, playbackRate));
   $: persistedState = {
     strokes,
