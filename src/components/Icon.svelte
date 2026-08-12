@@ -12,6 +12,8 @@
     | 'type'
     | 'play'
     | 'stop'
+    | 'fullscreen'
+    | 'exit-fullscreen'
     | 'close';
   export let size = 18;
 </script>
@@ -67,6 +69,12 @@
     <path d="M15 8c8 5 16 10 24 17-8 6-16 11-24 15 1-11 0-21 0-32Z" />
   {:else if name === 'stop'}
     <path d="M12 12c8-1 16 0 24 1 1 7 0 15 0 23-8 1-16 1-24-1-1-7 0-15 0-23Z" />
+  {:else if name === 'fullscreen'}
+    <path d="M8 19c0-4 0-7 1-11 4 0 7 0 11 1M28 9c4-1 7-1 11 0 0 4 1 7 0 11" />
+    <path d="M9 28c-1 4-1 7 0 11 4 0 7 1 11 0M39 28c1 4 1 7 0 11-4 0-7 0-11 1" />
+  {:else if name === 'exit-fullscreen'}
+    <path d="M8 19c4 0 7 0 11-1 0-4 0-7 1-11M28 8c1 4 1 7 1 11 4 0 7 0 11 1" />
+    <path d="M8 29c4 0 7 0 11 1 0 4 0 7 1 11M28 40c1-4 1-7 1-11 4 0 7 0 11-1" />
   {:else if name === 'close'}
     <path d="M10 9c9 10 18 20 29 30M39 9C29 18 20 29 9 39" />
   {/if}
