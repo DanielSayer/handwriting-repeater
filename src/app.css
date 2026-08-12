@@ -1,5 +1,5 @@
 :root {
-  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  font-family: Inter, 'Segoe UI', system-ui, sans-serif;
   color: #253044;
   background: #efebe0;
   font-synthesis: none;
@@ -14,24 +14,46 @@
   --radius: 10px;
   --radius-lg: 14px;
   --shadow-panel: 3px 4px 0 rgba(37, 48, 68, 0.08), 0 8px 22px rgba(37, 48, 68, 0.06);
-  --hand: "Segoe Print", "Comic Sans MS", cursive;
+  --hand: 'Segoe Print', 'Comic Sans MS', cursive;
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; min-height: 100vh; overflow: hidden; }
-button, input, textarea, select { font: inherit; }
-button { color: inherit; -webkit-tap-highlight-color: transparent; }
-button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow: hidden;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button {
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
 @media (max-width: 900px) {
-  body { overflow: auto; }
+  body {
+    overflow: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
   }

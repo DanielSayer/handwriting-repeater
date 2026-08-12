@@ -37,7 +37,13 @@ async function drawBackgroundImage(
 
   context.save();
   context.globalAlpha = options.backgroundOpacity;
-  context.drawImage(image, (width - imageWidth) / 2, (height - imageHeight) / 2, imageWidth, imageHeight);
+  context.drawImage(
+    image,
+    (width - imageWidth) / 2,
+    (height - imageHeight) / 2,
+    imageWidth,
+    imageHeight
+  );
   context.restore();
 }
 

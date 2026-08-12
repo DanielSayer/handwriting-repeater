@@ -75,9 +75,10 @@
     };
   });
 
-  async function startPenAnimation(_nonce: number): Promise<void> {
+  async function startPenAnimation(nonce: number): Promise<void> {
     stopPenAnimation();
     await tick();
+    if (!replaying || nonce !== replayNonce) return;
 
     const startedAt = performance.now();
     const frame = (timestamp: number): void => {
@@ -105,7 +106,8 @@
       if (
         elapsedSeconds >= timing.delaySeconds &&
         elapsedSeconds <= timing.delaySeconds + timing.durationSeconds
-      ) return index;
+      )
+        return index;
     }
     return -1;
   }
@@ -120,8 +122,11 @@
     const length = path.getTotalLength();
     const distance = length * progress;
     const point = path.getPointAtLength(distance);
-    const nearbyPoint = path.getPointAtLength(Math.min(length, distance + Math.max(1, length * 0.01)));
-    const tangentAngle = Math.atan2(nearbyPoint.y - point.y, nearbyPoint.x - point.x) * (180 / Math.PI);
+    const nearbyPoint = path.getPointAtLength(
+      Math.min(length, distance + Math.max(1, length * 0.01))
+    );
+    const tangentAngle =
+      Math.atan2(nearbyPoint.y - point.y, nearbyPoint.x - point.x) * (180 / Math.PI);
 
     penX = point.x;
     penY = point.y;
@@ -134,11 +139,9 @@
     replayPaths.forEach((path, index) => {
       const stroke = strokes[index];
       if (!path || !stroke) return;
-      path.style.strokeDashoffset = String(1 - strokeReplayProgress(
-        stroke,
-        timingFor(index),
-        elapsedSeconds
-      ));
+      path.style.strokeDashoffset = String(
+        1 - strokeReplayProgress(stroke, timingFor(index), elapsedSeconds)
+      );
     });
   }
 
@@ -226,7 +229,6 @@
     event.preventDefault();
     onBackgroundSelected(file);
   }
-
 </script>
 
 <Dropzone
@@ -243,12 +245,26 @@
   role="presentation"
   tabindex="-1"
 >
-  <div class="board-viewport" class:trace-active={traceMode} class:background-drag-active={backgroundDragActive}>
+  <div
+    class="board-viewport"
+    class:trace-active={traceMode}
+    class:background-drag-active={backgroundDragActive}
+  >
     <div class="history-actions">
-      <button on:click={onUndo} disabled={!canUndo} aria-label="Undo" title="Undo"><Icon name="undo" /></button>
-      <button on:click={onRedo} disabled={!canRedo} aria-label="Redo" title="Redo"><Icon name="redo" /></button>
+      <button on:click={onUndo} disabled={!canUndo} aria-label="Undo" title="Undo"
+        ><Icon name="undo" /></button
+      >
+      <button on:click={onRedo} disabled={!canRedo} aria-label="Redo" title="Redo"
+        ><Icon name="redo" /></button
+      >
       <span class="history-divider" aria-hidden="true"></span>
-      <button class="clear-action" on:click={onClear} disabled={!canClear} aria-label="Clear board" title="Clear board"><Icon name="clear" /></button>
+      <button
+        class="clear-action"
+        on:click={onClear}
+        disabled={!canClear}
+        aria-label="Clear board"
+        title="Clear board"><Icon name="clear" /></button
+      >
     </div>
     <div
       class={`paper lines-${lineStyle}`}
@@ -380,7 +396,7 @@
     border-radius: 9px 12px 8px 11px;
     background: rgba(255, 255, 255, 0.92);
     box-shadow: 0 2px 8px rgba(30, 36, 48, 0.08);
-    transform: rotate(.35deg);
+    transform: rotate(0.35deg);
   }
   .history-actions button {
     display: grid;
@@ -393,12 +409,30 @@
     cursor: pointer;
     color: var(--ink);
   }
-  .history-actions button:hover:not(:disabled) { background: #f0ede4; }
-  .history-actions button:disabled { opacity: 0.3; cursor: default; }
-  .history-actions .clear-action { color: #b0492f; }
-  .history-divider { width: 1px; height: 18px; background: var(--line); margin: 0 3px; }
-  :global(.canvas-dropzone) { min-height: 0; display: grid; }
-  .background-drag-active { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(30, 36, 48, 0.15); }
+  .history-actions button:hover:not(:disabled) {
+    background: #f0ede4;
+  }
+  .history-actions button:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+  .history-actions .clear-action {
+    color: #b0492f;
+  }
+  .history-divider {
+    width: 1px;
+    height: 18px;
+    background: var(--line);
+    margin: 0 3px;
+  }
+  :global(.canvas-dropzone) {
+    min-height: 0;
+    display: grid;
+  }
+  .background-drag-active {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px rgba(30, 36, 48, 0.15);
+  }
   .paper {
     --paper: #fffdf7;
     --zoom: 1;
@@ -414,17 +448,64 @@
     touch-action: none;
     cursor: crosshair;
     outline: none;
-    box-shadow: inset 0 0 0 1px rgba(37, 48, 68, .04);
+    box-shadow: inset 0 0 0 1px rgba(37, 48, 68, 0.04);
   }
-  .drawing-layer:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
-  .background-image { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; }
-  .paper-grain { position: absolute; z-index: 2; inset: 0; pointer-events: none; opacity: 0.23; background-image: radial-gradient(#9e9a8f 0.55px, transparent 0.7px); background-size: 7px 7px; }
-  .paper.lines-ruled { background-image: repeating-linear-gradient(to bottom, transparent 0 72px, #b8d4e7 73px 75px, transparent 76px 92px); }
-  .paper.lines-dotted { background-image: radial-gradient(circle, #a8c9df 1.5px, transparent 1.8px); background-size: 16px 92px; background-position: 0 73px; }
-  .paper.lines-grid { background-image: linear-gradient(#cfdfeb 1px, transparent 1px), linear-gradient(90deg, #cfdfeb 1px, transparent 1px); background-size: 48px 48px; }
-  .drawing-layer, .guide-layer { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .drawing-layer { z-index: 4; }
-  .guide-layer { z-index: 3; pointer-events: none; }
+  .drawing-layer:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: -2px;
+  }
+  .background-image {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+  }
+  .paper-grain {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.23;
+    background-image: radial-gradient(#9e9a8f 0.55px, transparent 0.7px);
+    background-size: 7px 7px;
+  }
+  .paper.lines-ruled {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0 72px,
+      #b8d4e7 73px 75px,
+      transparent 76px 92px
+    );
+  }
+  .paper.lines-dotted {
+    background-image: radial-gradient(circle, #a8c9df 1.5px, transparent 1.8px);
+    background-size: 16px 92px;
+    background-position: 0 73px;
+  }
+  .paper.lines-grid {
+    background-image:
+      linear-gradient(#cfdfeb 1px, transparent 1px),
+      linear-gradient(90deg, #cfdfeb 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .drawing-layer,
+  .guide-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .drawing-layer {
+    z-index: 4;
+  }
+  .guide-layer {
+    z-index: 3;
+    pointer-events: none;
+  }
   .guide-layer span {
     position: absolute;
     left: 7%;
@@ -437,12 +518,37 @@
     letter-spacing: 0.05em;
     opacity: 0.62;
   }
-  .trace-active .guide-layer span { color: #8f9aa6; opacity: 0.78; }
-  .empty-prompt { position: absolute; z-index: 3; inset: 0; display: grid; place-content: center; justify-items: center; text-align: center; color: #9aa0a8; pointer-events: none; }
-  .empty-prompt p { margin: 10px 0 4px; font: 25px var(--hand); color: #65707c; transform: rotate(-1deg); }
-  .empty-prompt small { font-size: 11px; }
-  .replaying .replay-path { stroke-dasharray: 1; stroke-dashoffset: 1; }
-  .trace-stroke-layer { pointer-events: none; }
+  .trace-active .guide-layer span {
+    color: #8f9aa6;
+    opacity: 0.78;
+  }
+  .empty-prompt {
+    position: absolute;
+    z-index: 3;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    text-align: center;
+    color: #9aa0a8;
+    pointer-events: none;
+  }
+  .empty-prompt p {
+    margin: 10px 0 4px;
+    font: 25px var(--hand);
+    color: #65707c;
+    transform: rotate(-1deg);
+  }
+  .empty-prompt small {
+    font-size: 11px;
+  }
+  .replaying .replay-path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  .trace-stroke-layer {
+    pointer-events: none;
+  }
   .drop-prompt {
     position: absolute;
     z-index: 6;
@@ -457,12 +563,28 @@
     text-align: center;
     pointer-events: none;
   }
-  .drop-prompt strong { font-size: 18px; }
-  .drop-prompt span { font-size: 11px; color: var(--muted); }
+  .drop-prompt strong {
+    font-size: 18px;
+  }
+  .drop-prompt span {
+    font-size: 11px;
+    color: var(--muted);
+  }
 
   @media (min-width: 1400px) {
-    .history-actions { top: 14px; right: 14px; gap: 3px; padding: 5px; }
-    .history-actions button { width: 38px; height: 38px; }
-    .history-divider { height: 22px; margin: 0 4px; }
+    .history-actions {
+      top: 14px;
+      right: 14px;
+      gap: 3px;
+      padding: 5px;
+    }
+    .history-actions button {
+      width: 38px;
+      height: 38px;
+    }
+    .history-divider {
+      height: 22px;
+      margin: 0 4px;
+    }
   }
 </style>

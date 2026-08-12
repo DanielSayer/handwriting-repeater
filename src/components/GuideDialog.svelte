@@ -24,10 +24,13 @@
   <div class="text-panel" role="dialog" aria-modal="true" aria-labelledby="guide-title">
     <div class="panel-header">
       <h2 id="guide-title">Type something to practise</h2>
-      <button on:click={onClose} aria-label="Close text panel"><Icon name="close" size={16} /></button>
+      <button on:click={onClose} aria-label="Close text panel"
+        ><Icon name="close" size={16} /></button
+      >
     </div>
     <label class="field-label" for="guide-copy">Words or sentence</label>
-    <textarea id="guide-copy" rows="3" bind:value={draftText} placeholder="The quick brown fox…"></textarea>
+    <textarea id="guide-copy" rows="3" bind:value={draftText} placeholder="The quick brown fox…"
+    ></textarea>
     <div class="form-grid">
       <label>
         <span>Rows</span>
@@ -56,10 +59,38 @@
 </div>
 
 <style>
-  .modal-backdrop { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(30, 36, 48, 0.32); backdrop-filter: blur(2px); }
-  .text-panel { width: min(540px, 100%); padding: 22px; border: 1.5px solid var(--line); border-radius: 14px 18px 13px 17px; background: var(--panel); box-shadow: 5px 6px 0 rgba(37, 48, 68, .12), 0 24px 60px rgba(30, 36, 48, 0.2); }
-  .panel-header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
-  .panel-header h2 { margin: 0 0 18px; font: 700 22px var(--hand); letter-spacing: -0.01em; transform: rotate(-.5deg); }
+  .modal-backdrop {
+    position: fixed;
+    z-index: 50;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(30, 36, 48, 0.32);
+    backdrop-filter: blur(2px);
+  }
+  .text-panel {
+    width: min(540px, 100%);
+    padding: 22px;
+    border: 1.5px solid var(--line);
+    border-radius: 14px 18px 13px 17px;
+    background: var(--panel);
+    box-shadow:
+      5px 6px 0 rgba(37, 48, 68, 0.12),
+      0 24px 60px rgba(30, 36, 48, 0.2);
+  }
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: flex-start;
+  }
+  .panel-header h2 {
+    margin: 0 0 18px;
+    font: 700 22px var(--hand);
+    letter-spacing: -0.01em;
+    transform: rotate(-0.5deg);
+  }
   .panel-header > button {
     width: 32px;
     height: 32px;
@@ -71,15 +102,60 @@
     color: var(--muted);
     cursor: pointer;
   }
-  .panel-header > button:hover { background: #f0ede4; color: var(--ink); }
-  .field-label, .form-grid span, .preset-row > span { display: block; margin-bottom: 6px; color: var(--muted); font: 700 12px var(--hand); letter-spacing: .02em; }
-  textarea, input, select { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
-  textarea:focus, input:focus, select:focus { border-color: var(--ink); outline: none; }
-  textarea { resize: vertical; padding: 12px; font: 20px var(--hand); }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
-  .form-grid input, .form-grid select { height: 40px; padding: 0 10px; }
-  .preset-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
-  .preset-row > span { margin: 0 5px 0 0; }
+  .panel-header > button:hover {
+    background: #f0ede4;
+    color: var(--ink);
+  }
+  .field-label,
+  .form-grid span,
+  .preset-row > span {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--muted);
+    font: 700 12px var(--hand);
+    letter-spacing: 0.02em;
+  }
+  textarea,
+  input,
+  select {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  textarea:focus,
+  input:focus,
+  select:focus {
+    border-color: var(--ink);
+    outline: none;
+  }
+  textarea {
+    resize: vertical;
+    padding: 12px;
+    font: 20px var(--hand);
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 14px;
+  }
+  .form-grid input,
+  .form-grid select {
+    height: 40px;
+    padding: 0 10px;
+  }
+  .preset-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 16px;
+  }
+  .preset-row > span {
+    margin: 0 5px 0 0;
+  }
   .preset-row button {
     border: 1px solid var(--line);
     border-radius: 999px;
@@ -88,16 +164,45 @@
     font-size: 11px;
     cursor: pointer;
   }
-  .preset-row button:hover { border-color: var(--ink); }
-  .panel-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 22px; }
-  .panel-actions button { min-height: 40px; border-radius: var(--radius); padding: 0 16px; font-size: 13px; font-weight: 700; cursor: pointer; }
-  .panel-actions .secondary { border: 1px solid var(--line); background: #fff; }
-  .panel-actions .secondary:hover { border-color: var(--ink); }
-  .panel-actions .primary { border: 1px solid var(--ink); background: var(--ink); color: #fff; }
-  .panel-actions .primary:hover { filter: brightness(1.15); }
+  .preset-row button:hover {
+    border-color: var(--ink);
+  }
+  .panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    margin-top: 22px;
+  }
+  .panel-actions button {
+    min-height: 40px;
+    border-radius: var(--radius);
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .panel-actions .secondary {
+    border: 1px solid var(--line);
+    background: #fff;
+  }
+  .panel-actions .secondary:hover {
+    border-color: var(--ink);
+  }
+  .panel-actions .primary {
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: #fff;
+  }
+  .panel-actions .primary:hover {
+    filter: brightness(1.15);
+  }
 
   @media (max-width: 620px) {
-    .text-panel { padding: 18px; }
-    .form-grid { grid-template-columns: 1fr; }
+    .text-panel {
+      padding: 18px;
+    }
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

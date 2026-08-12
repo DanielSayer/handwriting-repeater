@@ -72,9 +72,19 @@
     text-transform: uppercase;
   }
   @media (max-width: 620px) {
-    .topbar { height: 54px; padding: 8px 14px; }
-    .brand-mark { width: 34px; height: 34px; }
-    .brand-copy h1 { font-size: 18px; }
-    .brand-copy p { display: none; }
+    .topbar {
+      height: 54px;
+      padding: 8px 14px;
+    }
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+    }
+    .brand-copy h1 {
+      font-size: 18px;
+    }
+    .brand-copy p {
+      display: none;
+    }
   }
 </style>

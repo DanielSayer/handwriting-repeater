@@ -15,7 +15,9 @@ export function createReplaySchedule(
   if (strokes.length === 0) return [];
 
   const safePlaybackRate = Math.max(0.1, playbackRate);
-  const legacyStrokeLengths = strokes.map((stroke) => hasRecordedTiming(stroke) ? 0 : strokeLength(stroke));
+  const legacyStrokeLengths = strokes.map((stroke) =>
+    hasRecordedTiming(stroke) ? 0 : strokeLength(stroke)
+  );
   const totalLegacyLength = legacyStrokeLengths.reduce((sum, length) => sum + length, 0);
   let elapsedSeconds = 0;
 
@@ -65,11 +67,12 @@ export function strokeReplayProgress(
 
     const previousElapsedMs = stroke.points[index - 1].elapsedMs!;
     const segmentDurationMs = currentElapsedMs - previousElapsedMs;
-    const segmentProgress = segmentDurationMs > 0
-      ? clamp((targetElapsedMs - previousElapsedMs) / segmentDurationMs, 0, 1)
-      : 1;
-    const distance = distances[index - 1]
-      + (distances[index] - distances[index - 1]) * segmentProgress;
+    const segmentProgress =
+      segmentDurationMs > 0
+        ? clamp((targetElapsedMs - previousElapsedMs) / segmentDurationMs, 0, 1)
+        : 1;
+    const distance =
+      distances[index - 1] + (distances[index] - distances[index - 1]) * segmentProgress;
     return distance / totalDistance;
   }
 
@@ -82,10 +85,11 @@ function hasRecordedTiming(stroke: BoardStroke): boolean {
   let previousElapsedMs = -1;
   for (const point of stroke.points) {
     if (
-      typeof point.elapsedMs !== 'number'
-      || !Number.isFinite(point.elapsedMs)
-      || point.elapsedMs < previousElapsedMs
-    ) return false;
+      typeof point.elapsedMs !== 'number' ||
+      !Number.isFinite(point.elapsedMs) ||
+      point.elapsedMs < previousElapsedMs
+    )
+      return false;
     previousElapsedMs = point.elapsedMs;
   }
 

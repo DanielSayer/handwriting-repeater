@@ -14,10 +14,20 @@
   <div class="rail-section">
     <span class="rail-heading">Ink</span>
     <div class="segmented" aria-label="Pen type">
-      <button class:active={penType === 'marker'} on:click={() => (penType = 'marker')} title="Marker" aria-label="Marker pen">
+      <button
+        class:active={penType === 'marker'}
+        on:click={() => (penType = 'marker')}
+        title="Marker"
+        aria-label="Marker pen"
+      >
         <Icon name="marker" size={20} />
       </button>
-      <button class:active={penType === 'pencil'} on:click={() => (penType = 'pencil')} title="Pencil" aria-label="Pencil">
+      <button
+        class:active={penType === 'pencil'}
+        on:click={() => (penType = 'pencil')}
+        title="Pencil"
+        aria-label="Pencil"
+      >
         <Icon name="pencil" size={20} />
       </button>
     </div>
@@ -26,12 +36,13 @@
   <div class="rail-section">
     <span class="rail-heading">Size</span>
     <div class="size-options">
-      {#each [3, 6, 10] as size}
+      {#each [3, 6, 10] as size (size)}
         <button
           class:active={penSize === size}
           on:click={() => (penSize = size)}
           aria-label={`${size === 3 ? 'Small' : size === 6 ? 'Medium' : 'Large'} pen`}
-        ><span style={`width:${size + 3}px;height:${size + 3}px`}></span></button>
+          ><span style={`width:${size + 3}px;height:${size + 3}px`}></span></button
+        >
       {/each}
     </div>
   </div>
@@ -39,7 +50,7 @@
   <div class="rail-section">
     <span class="rail-heading">Colour</span>
     <div class="colour-grid">
-      {#each INK_COLOURS as colour}
+      {#each INK_COLOURS as colour (colour)}
         <button
           class:active={penColour === colour}
           style={`--swatch:${colour}`}
@@ -52,10 +63,22 @@
 
   <div class="rail-section mode-section">
     <span class="rail-heading">Modes</span>
-    <button class="mode-button" class:active={traceMode} on:click={() => (traceMode = !traceMode)} aria-label="Trace mode" title="Trace mode">
+    <button
+      class="mode-button"
+      class:active={traceMode}
+      on:click={() => (traceMode = !traceMode)}
+      aria-label="Trace mode"
+      title="Trace mode"
+    >
       <Icon name="trace" /><span>Trace</span>
     </button>
-    <button class="mode-button" class:active={loopMode} on:click={() => (loopMode = !loopMode)} aria-label="Loop replay" title="Loop replay">
+    <button
+      class="mode-button"
+      class:active={loopMode}
+      on:click={() => (loopMode = !loopMode)}
+      aria-label="Loop replay"
+      title="Loop replay"
+    >
       <Icon name="loop" /><span>Loop</span>
     </button>
   </div>
@@ -71,7 +94,11 @@
     border-radius: 13px 17px 12px 16px;
     box-shadow: var(--shadow-panel);
   }
-  .rail-section + .rail-section { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
+  .rail-section + .rail-section {
+    border-top: 1px solid var(--line);
+    margin-top: 14px;
+    padding-top: 14px;
+  }
   .rail-heading {
     display: block;
     margin-bottom: 8px;
@@ -82,8 +109,13 @@
     font-weight: 700;
     letter-spacing: 0.02em;
   }
-  .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .segmented button, .size-options button {
+  .segmented {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .segmented button,
+  .size-options button {
     display: grid;
     place-items: center;
     border: 1.5px solid var(--line);
@@ -92,15 +124,32 @@
     min-height: 38px;
     cursor: pointer;
   }
-  .segmented button:hover, .size-options button:hover { border-color: var(--ink); transform: rotate(-1deg); }
-  .segmented button.active, .size-options button.active {
+  .segmented button:hover,
+  .size-options button:hover {
+    border-color: var(--ink);
+    transform: rotate(-1deg);
+  }
+  .segmented button.active,
+  .size-options button.active {
     color: #fff;
     border-color: var(--ink);
     background: var(--ink);
   }
-  .size-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
-  .size-options span { display: block; border-radius: 50%; background: currentColor; }
-  .colour-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  .size-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+  }
+  .size-options span {
+    display: block;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .colour-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+  }
   .colour-grid button {
     aspect-ratio: 1;
     border: 0;
@@ -109,11 +158,25 @@
     box-shadow: inset 0 0 0 1px rgba(30, 36, 48, 0.12);
     cursor: pointer;
   }
-  .colour-grid button:nth-child(even) { border-radius: 55% 45% 52% 47%; transform: rotate(4deg); }
-  .colour-grid button:hover { transform: scale(1.06) rotate(-2deg); }
-  .colour-grid button.active { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--ink); }
-  .mode-section { display: grid; gap: 7px; }
-  .mode-section .rail-heading { grid-column: 1 / -1; }
+  .colour-grid button:nth-child(even) {
+    border-radius: 55% 45% 52% 47%;
+    transform: rotate(4deg);
+  }
+  .colour-grid button:hover {
+    transform: scale(1.06) rotate(-2deg);
+  }
+  .colour-grid button.active {
+    box-shadow:
+      0 0 0 2px var(--panel),
+      0 0 0 4px var(--ink);
+  }
+  .mode-section {
+    display: grid;
+    gap: 7px;
+  }
+  .mode-section .rail-heading {
+    grid-column: 1 / -1;
+  }
   .mode-button {
     display: flex;
     align-items: center;
@@ -128,26 +191,74 @@
     cursor: pointer;
     color: var(--ink);
   }
-  .mode-button:hover { border-color: var(--ink); transform: rotate(-.5deg); }
-  .mode-button.active { background: var(--ink); border-color: var(--ink); color: #fff; transform: rotate(-.7deg); }
+  .mode-button:hover {
+    border-color: var(--ink);
+    transform: rotate(-0.5deg);
+  }
+  .mode-button.active {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+    transform: rotate(-0.7deg);
+  }
 
   @media (min-width: 1400px) {
-    .tool-rail { padding: 18px 16px; }
-    .rail-section + .rail-section { margin-top: 18px; padding-top: 18px; }
-    .rail-heading { margin-bottom: 10px; font-size: 15px; }
-    .segmented { gap: 8px; }
-    .segmented button, .size-options button { min-height: 48px; }
-    .size-options { gap: 7px; }
-    .colour-grid { gap: 10px; }
-    .mode-section { gap: 9px; }
-    .mode-button { gap: 10px; min-height: 44px; padding: 10px 12px; font-size: 14px; }
+    .tool-rail {
+      padding: 18px 16px;
+    }
+    .rail-section + .rail-section {
+      margin-top: 18px;
+      padding-top: 18px;
+    }
+    .rail-heading {
+      margin-bottom: 10px;
+      font-size: 15px;
+    }
+    .segmented {
+      gap: 8px;
+    }
+    .segmented button,
+    .size-options button {
+      min-height: 48px;
+    }
+    .size-options {
+      gap: 7px;
+    }
+    .colour-grid {
+      gap: 10px;
+    }
+    .mode-section {
+      gap: 9px;
+    }
+    .mode-button {
+      gap: 10px;
+      min-height: 44px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
   }
 
   @media (max-width: 620px) {
-    .tool-rail { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 9px; }
-    .rail-section + .rail-section { border: 0; margin: 0; padding: 0; }
-    .mode-section { grid-template-columns: 1fr 1fr; }
-    .mode-button { justify-content: center; padding: 8px 5px; }
-    .mode-button span { display: none; }
+    .tool-rail {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding: 9px;
+    }
+    .rail-section + .rail-section {
+      border: 0;
+      margin: 0;
+      padding: 0;
+    }
+    .mode-section {
+      grid-template-columns: 1fr 1fr;
+    }
+    .mode-button {
+      justify-content: center;
+      padding: 8px 5px;
+    }
+    .mode-button span {
+      display: none;
+    }
   }
 </style>

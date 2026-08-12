@@ -18,7 +18,10 @@ export async function prepareBackgroundImage(file: File): Promise<BoardBackgroun
 
   try {
     const image = await loadImage(sourceUrl);
-    const scale = Math.min(1, MAX_BACKGROUND_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight));
+    const scale = Math.min(
+      1,
+      MAX_BACKGROUND_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight)
+    );
     const width = Math.max(1, Math.round(image.naturalWidth * scale));
     const height = Math.max(1, Math.round(image.naturalHeight * scale));
     const canvas = document.createElement('canvas');

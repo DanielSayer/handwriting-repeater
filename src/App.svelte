@@ -11,7 +11,13 @@
   import { downloadBoardPng } from './lib/exportBoard';
   import { createReplaySchedule, replayDuration as getReplayDuration } from './lib/replay';
   import { loadBoard, saveBoard } from './lib/storage';
-  import type { BoardBackground, BoardStroke, LineStyle, PenType, PersistedBoardState } from './lib/types';
+  import type {
+    BoardBackground,
+    BoardStroke,
+    LineStyle,
+    PenType,
+    PersistedBoardState
+  } from './lib/types';
 
   let hydrated = false;
   let strokes: BoardStroke[] = [];
@@ -59,14 +65,20 @@
     guideSize
   } satisfies PersistedBoardState;
   $: if (hydrated) {
-    try { saveBoard(persistedState); } catch { /* Large browser-local boards may exceed the storage quota. */ }
+    try {
+      saveBoard(persistedState);
+    } catch {
+      /* Large browser-local boards may exceed the storage quota. */
+    }
   }
 
   onMount(() => {
     try {
       const saved = loadBoard();
       if (saved) restoreBoard(saved);
-    } catch { /* Invalid saved data falls back to the default board. */ }
+    } catch {
+      /* Invalid saved data falls back to the default board. */
+    }
     hydrated = true;
     return () => clearTimeout(replayTimer);
   });
@@ -131,10 +143,13 @@
     replayNonce += 1;
     replaying = true;
 
-    replayTimer = setTimeout(() => {
-      replaying = false;
-      if (loopMode) void replay();
-    }, replayDuration * 1000 + 80);
+    replayTimer = setTimeout(
+      () => {
+        replaying = false;
+        if (loopMode) void replay();
+      },
+      replayDuration * 1000 + 80
+    );
   }
 
   function placeGuide(text: string, rows: number, size: number): void {
@@ -176,7 +191,9 @@
         repeatCount,
         guideSize
       });
-    } catch { /* Export is best-effort when browser canvas APIs are unavailable. */ }
+    } catch {
+      /* Export is best-effort when browser canvas APIs are unavailable. */
+    }
   }
 </script>
 
@@ -211,7 +228,10 @@
         canRedo={redoStack.length > 0}
         canClear={strokes.length > 0 || Boolean(guideText)}
         onStrokeComplete={addStroke}
-        onResize={(width, height) => { boardWidth = width; boardHeight = height; }}
+        onResize={(width, height) => {
+          boardWidth = width;
+          boardHeight = height;
+        }}
         onUndo={undo}
         onRedo={redo}
         onClear={clearBoard}
@@ -254,8 +274,10 @@
     background-color: var(--desk);
     background-image:
       radial-gradient(#d5cebd 1px, transparent 1.2px),
-      linear-gradient(104deg, transparent 49.8%, rgba(255,255,255,.28) 50%, transparent 50.2%);
-    background-size: 24px 24px, 180px 180px;
+      linear-gradient(104deg, transparent 49.8%, rgba(255, 255, 255, 0.28) 50%, transparent 50.2%);
+    background-size:
+      24px 24px,
+      180px 180px;
   }
   .workspace {
     min-height: 0;
@@ -279,16 +301,33 @@
       gap: 20px;
       padding: 20px;
     }
-    .board-column { gap: 16px; }
+    .board-column {
+      gap: 16px;
+    }
   }
 
   @media (max-width: 900px) {
-    .app-shell { min-height: 100vh; height: auto; }
-    .workspace { min-height: calc(100vh - 60px); grid-template-columns: 104px minmax(0, 1fr); }
-    .board-column { min-height: 620px; }
+    .app-shell {
+      min-height: 100vh;
+      height: auto;
+    }
+    .workspace {
+      min-height: calc(100vh - 60px);
+      grid-template-columns: 104px minmax(0, 1fr);
+    }
+    .board-column {
+      min-height: 620px;
+    }
   }
   @media (max-width: 620px) {
-    .workspace { grid-template-columns: 1fr; padding: 10px; gap: 10px; }
-    .board-column { min-height: 570px; grid-row: 2; }
+    .workspace {
+      grid-template-columns: 1fr;
+      padding: 10px;
+      gap: 10px;
+    }
+    .board-column {
+      min-height: 570px;
+      grid-row: 2;
+    }
   }
 </style>

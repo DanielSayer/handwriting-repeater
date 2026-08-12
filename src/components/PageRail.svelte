@@ -38,17 +38,33 @@
   <div class="page-group">
     <span class="rail-heading">Page lines</span>
     <div class="line-options">
-      <button class:active={lineStyle === 'ruled'} on:click={() => (lineStyle = 'ruled')} aria-label="Ruled lines"><i class="line-icon ruled"></i></button>
-      <button class:active={lineStyle === 'dotted'} on:click={() => (lineStyle = 'dotted')} aria-label="Dotted lines"><i class="line-icon dotted"></i></button>
-      <button class:active={lineStyle === 'grid'} on:click={() => (lineStyle = 'grid')} aria-label="Grid"><i class="line-icon grid"></i></button>
-      <button class:active={lineStyle === 'blank'} on:click={() => (lineStyle = 'blank')} aria-label="Blank page"><i class="line-icon blank"></i></button>
+      <button
+        class:active={lineStyle === 'ruled'}
+        on:click={() => (lineStyle = 'ruled')}
+        aria-label="Ruled lines"><i class="line-icon ruled"></i></button
+      >
+      <button
+        class:active={lineStyle === 'dotted'}
+        on:click={() => (lineStyle = 'dotted')}
+        aria-label="Dotted lines"><i class="line-icon dotted"></i></button
+      >
+      <button
+        class:active={lineStyle === 'grid'}
+        on:click={() => (lineStyle = 'grid')}
+        aria-label="Grid"><i class="line-icon grid"></i></button
+      >
+      <button
+        class:active={lineStyle === 'blank'}
+        on:click={() => (lineStyle = 'blank')}
+        aria-label="Blank page"><i class="line-icon blank"></i></button
+      >
     </div>
   </div>
 
   <div class="page-group">
     <span class="rail-heading">Paper</span>
     <div class="paper-options">
-      {#each PAPER_OPTIONS as paper}
+      {#each PAPER_OPTIONS as paper (paper.value)}
         <button
           class:active={pageColour === paper.value}
           style={`--paper-swatch:${paper.value}`}
@@ -132,9 +148,14 @@
     border-radius: 9px 12px 8px 11px;
     background: var(--paper);
     cursor: pointer;
-    transition: border-color 0.15s ease, transform 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      transform 0.15s ease;
   }
-  .page-tool:hover { border-color: var(--ink); transform: rotate(-.5deg); }
+  .page-tool:hover {
+    border-color: var(--ink);
+    transform: rotate(-0.5deg);
+  }
   .tool-icon {
     width: 34px;
     height: 34px;
@@ -145,10 +166,21 @@
     background: #f0ede4;
     color: var(--ink);
   }
-  .page-tool strong, .page-tool small { display: block; }
-  .page-tool strong { font-size: 12px; }
-  .page-tool small { color: var(--muted); margin-top: 3px; font-size: 10px; }
-  .page-group { margin-top: 18px; }
+  .page-tool strong,
+  .page-tool small {
+    display: block;
+  }
+  .page-tool strong {
+    font-size: 12px;
+  }
+  .page-tool small {
+    color: var(--muted);
+    margin-top: 3px;
+    font-size: 10px;
+  }
+  .page-group {
+    margin-top: 18px;
+  }
   .rail-heading {
     display: block;
     margin-bottom: 8px;
@@ -159,7 +191,11 @@
     font-weight: 700;
     letter-spacing: 0.02em;
   }
-  .line-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  .line-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+  }
   .line-options button {
     min-height: 38px;
     padding: 6px;
@@ -170,15 +206,45 @@
     border-radius: 8px 10px 7px 11px;
     cursor: pointer;
   }
-  .line-options button:nth-child(even) { transform: rotate(1deg); }
-  .line-options button:hover { border-color: var(--ink); transform: rotate(-1deg); }
-  .line-options button.active { border-color: var(--ink); background: var(--ink); }
-  .line-icon { width: 24px; height: 22px; border-radius: 3px 5px 2px 4px; background-color: #fff; display: block; }
-  .line-icon.ruled { background-image: repeating-linear-gradient(to bottom, transparent 0 5px, #6e92ae 6px 7px); }
-  .line-icon.dotted { background-image: radial-gradient(#6e92ae 1px, transparent 1.2px); background-size: 5px 7px; }
-  .line-icon.grid { background-image: linear-gradient(#8ca7ba 1px,transparent 1px),linear-gradient(90deg,#8ca7ba 1px,transparent 1px); background-size: 7px 7px; }
-  .line-icon.blank { border: 1px solid var(--line); }
-  .paper-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .line-options button:nth-child(even) {
+    transform: rotate(1deg);
+  }
+  .line-options button:hover {
+    border-color: var(--ink);
+    transform: rotate(-1deg);
+  }
+  .line-options button.active {
+    border-color: var(--ink);
+    background: var(--ink);
+  }
+  .line-icon {
+    width: 24px;
+    height: 22px;
+    border-radius: 3px 5px 2px 4px;
+    background-color: #fff;
+    display: block;
+  }
+  .line-icon.ruled {
+    background-image: repeating-linear-gradient(to bottom, transparent 0 5px, #6e92ae 6px 7px);
+  }
+  .line-icon.dotted {
+    background-image: radial-gradient(#6e92ae 1px, transparent 1.2px);
+    background-size: 5px 7px;
+  }
+  .line-icon.grid {
+    background-image:
+      linear-gradient(#8ca7ba 1px, transparent 1px),
+      linear-gradient(90deg, #8ca7ba 1px, transparent 1px);
+    background-size: 7px 7px;
+  }
+  .line-icon.blank {
+    border: 1px solid var(--line);
+  }
+  .paper-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
   .paper-options button {
     aspect-ratio: 1;
     border: 1.5px solid var(--line);
@@ -186,9 +252,19 @@
     background: var(--paper-swatch);
     cursor: pointer;
   }
-  .paper-options button:nth-child(even) { border-radius: 54% 46% 52% 48%; transform: rotate(2deg); }
-  .paper-options button:hover { border-color: var(--ink); transform: rotate(-2deg); }
-  .paper-options button.active { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--ink); }
+  .paper-options button:nth-child(even) {
+    border-radius: 54% 46% 52% 48%;
+    transform: rotate(2deg);
+  }
+  .paper-options button:hover {
+    border-color: var(--ink);
+    transform: rotate(-2deg);
+  }
+  .paper-options button.active {
+    box-shadow:
+      0 0 0 2px var(--paper),
+      0 0 0 4px var(--ink);
+  }
 
   .background-add {
     width: 100%;
@@ -205,9 +281,21 @@
     font-weight: 650;
     cursor: pointer;
   }
-  .background-add:hover:not(:disabled) { border-color: var(--ink); background: var(--paper); transform: rotate(-.4deg); }
-  .background-add:disabled { opacity: 0.55; cursor: wait; }
-  .background-hint { margin: 6px 2px 0; color: var(--muted); font-size: 10px; text-align: center; }
+  .background-add:hover:not(:disabled) {
+    border-color: var(--ink);
+    background: var(--paper);
+    transform: rotate(-0.4deg);
+  }
+  .background-add:disabled {
+    opacity: 0.55;
+    cursor: wait;
+  }
+  .background-hint {
+    margin: 6px 2px 0;
+    color: var(--muted);
+    font-size: 10px;
+    text-align: center;
+  }
   .background-card {
     display: flex;
     gap: 10px;
@@ -224,7 +312,13 @@
     border: 1px solid var(--line);
     flex: 0 0 auto;
   }
-  .background-meta { min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+  .background-meta {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
   .background-name {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -232,7 +326,10 @@
     color: var(--muted);
     font-size: 10px;
   }
-  .background-buttons { display: flex; gap: 6px; }
+  .background-buttons {
+    display: flex;
+    gap: 6px;
+  }
   .background-buttons button {
     flex: 1;
     min-height: 26px;
@@ -243,8 +340,12 @@
     font-weight: 650;
     cursor: pointer;
   }
-  .background-buttons button:hover { border-color: var(--ink); }
-  .background-buttons .remove { color: #b0492f; }
+  .background-buttons button:hover {
+    border-color: var(--ink);
+  }
+  .background-buttons .remove {
+    color: #b0492f;
+  }
   .fade-control {
     display: grid;
     grid-template-columns: auto 1fr;
@@ -255,39 +356,113 @@
     font-size: 10px;
     font-weight: 700;
   }
-  .fade-control input { width: 100%; accent-color: var(--ink); }
-  .background-error { margin: 8px 2px 0; color: #b0492f; font-size: 10px; }
+  .fade-control input {
+    width: 100%;
+    accent-color: var(--ink);
+  }
+  .background-error {
+    margin: 8px 2px 0;
+    color: #b0492f;
+    font-size: 10px;
+  }
 
-  .export-tool { margin-top: 20px; }
+  .export-tool {
+    margin-top: 20px;
+  }
 
   @media (min-width: 1400px) {
-    .page-rail { padding: 18px; }
-    .page-tool { gap: 12px; padding: 12px; }
-    .tool-icon { width: 40px; height: 40px; }
-    .page-tool strong { font-size: 14px; }
-    .page-tool small { margin-top: 4px; font-size: 11px; }
-    .page-group { margin-top: 22px; }
-    .rail-heading { margin-bottom: 10px; font-size: 15px; }
-    .line-options { gap: 7px; }
-    .line-options button { min-height: 46px; padding: 7px; }
-    .line-icon { width: 28px; height: 26px; }
-    .paper-options { gap: 10px; }
-    .background-add { min-height: 50px; gap: 10px; font-size: 13px; }
-    .background-hint { margin-top: 8px; font-size: 11px; }
-    .background-card { gap: 12px; padding: 10px; }
-    .background-thumb { width: 60px; height: 48px; }
-    .background-name, .background-buttons button, .fade-control, .background-error { font-size: 11px; }
-    .background-buttons button { min-height: 30px; }
-    .export-tool { margin-top: 24px; }
+    .page-rail {
+      padding: 18px;
+    }
+    .page-tool {
+      gap: 12px;
+      padding: 12px;
+    }
+    .tool-icon {
+      width: 40px;
+      height: 40px;
+    }
+    .page-tool strong {
+      font-size: 14px;
+    }
+    .page-tool small {
+      margin-top: 4px;
+      font-size: 11px;
+    }
+    .page-group {
+      margin-top: 22px;
+    }
+    .rail-heading {
+      margin-bottom: 10px;
+      font-size: 15px;
+    }
+    .line-options {
+      gap: 7px;
+    }
+    .line-options button {
+      min-height: 46px;
+      padding: 7px;
+    }
+    .line-icon {
+      width: 28px;
+      height: 26px;
+    }
+    .paper-options {
+      gap: 10px;
+    }
+    .background-add {
+      min-height: 50px;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .background-hint {
+      margin-top: 8px;
+      font-size: 11px;
+    }
+    .background-card {
+      gap: 12px;
+      padding: 10px;
+    }
+    .background-thumb {
+      width: 60px;
+      height: 48px;
+    }
+    .background-name,
+    .background-buttons button,
+    .fade-control,
+    .background-error {
+      font-size: 11px;
+    }
+    .background-buttons button {
+      min-height: 30px;
+    }
+    .export-tool {
+      margin-top: 24px;
+    }
   }
 
   @media (max-width: 900px) {
-    .page-rail { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-    .page-group, .export-tool { margin-top: 0; }
+    .page-rail {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .page-group,
+    .export-tool {
+      margin-top: 0;
+    }
   }
   @media (max-width: 620px) {
-    .page-rail { grid-template-columns: 1fr 1fr; padding: 10px; }
-    .page-tool { padding: 8px; }
-    .paper-options { gap: 4px; }
+    .page-rail {
+      grid-template-columns: 1fr 1fr;
+      padding: 10px;
+    }
+    .page-tool {
+      padding: 8px;
+    }
+    .paper-options {
+      gap: 4px;
+    }
   }
 </style>

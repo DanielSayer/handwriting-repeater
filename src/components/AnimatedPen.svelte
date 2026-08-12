@@ -24,10 +24,38 @@
     pointer-events: none;
     filter: drop-shadow(2px 3px 2px rgba(24, 36, 61, 0.2));
   }
-  .nib { stroke: #111820; stroke-width: 2; stroke-linejoin: round; }
-  .collar { stroke: #111820; stroke-width: 2; stroke-linejoin: round; }
-  .barrel { fill: #f4f3ee; stroke: #111820; stroke-width: 2.5; stroke-linejoin: round; }
-  .barrel-shine { fill: none; stroke: #fff; stroke-width: 2.5; stroke-linecap: round; opacity: 0.85; }
-  .cap { fill: #172138; stroke: #111820; stroke-width: 2.5; stroke-linejoin: round; }
-  .cap-line { stroke: #62708d; stroke-width: 2; opacity: 0.65; }
+  .nib {
+    stroke: #111820;
+    stroke-width: 2;
+    stroke-linejoin: round;
+  }
+  .collar {
+    stroke: #111820;
+    stroke-width: 2;
+    stroke-linejoin: round;
+  }
+  .barrel {
+    fill: #f4f3ee;
+    stroke: #111820;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+  }
+  .barrel-shine {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    opacity: 0.85;
+  }
+  .cap {
+    fill: #172138;
+    stroke: #111820;
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+  }
+  .cap-line {
+    stroke: #62708d;
+    stroke-width: 2;
+    opacity: 0.65;
+  }
 </style>
