@@ -2,9 +2,10 @@
   import { onMount, tick } from 'svelte';
   import Dropzone from 'svelte-file-dropzone';
   import AnimatedPen from './AnimatedPen.svelte';
+  import Icon from './Icon.svelte';
   import { BACKGROUND_IMAGE_ACCEPT, MAX_BACKGROUND_FILE_SIZE } from '../lib/backgroundImage';
   import { createGuideRows, pointFromPointer, smoothPath } from '../lib/drawing';
-  import { createReplaySchedule } from '../lib/replay';
+  import { createReplaySchedule, strokeReplayProgress } from '../lib/replay';
   import type { StrokeReplayTiming } from '../lib/replay';
   import type { BoardBackground, BoardStroke, LineStyle, PenType } from '../lib/types';
 
@@ -23,14 +24,12 @@
   export let traceMode: boolean;
   export let replaying: boolean;
   export let replayNonce: number;
-  export let replayDuration: number;
+  export let playbackRate: number;
   export let guideText: string;
   export let repeatCount: number;
   export let guideSize: number;
   export let backgroundImage: BoardBackground | null;
   export let backgroundOpacity: number;
-  export let backgroundLoading: boolean;
-  export let backgroundError: string;
   export let canUndo: boolean;
   export let canRedo: boolean;
   export let canClear: boolean;
@@ -40,13 +39,14 @@
   export let onRedo: () => void;
   export let onClear: () => void;
   export let onBackgroundSelected: (file: File) => void;
-  export let onRemoveBackground: () => void;
+  export let onBackgroundError: (message: string) => void;
 
   let svg: SVGSVGElement;
   let boardShell: HTMLDivElement;
   let boardWidth = 960;
   let boardHeight = 560;
   let currentStroke: BoardStroke | null = null;
+  let currentStrokeStartedAt = 0;
   let drawing = false;
   let replayPaths: SVGPathElement[] = [];
   let penAnimationFrame: number | undefined;
@@ -55,12 +55,10 @@
   let penY = 0;
   let penRotation = -55;
   let animatedPenColour = penColour;
-  let backgroundInput: HTMLInputElement | null | undefined;
   let backgroundDragActive = false;
-  let localBackgroundError = '';
 
   $: guideRows = createGuideRows(guideText, repeatCount);
-  $: replaySchedule = createReplaySchedule(strokes, replayDuration);
+  $: replaySchedule = createReplaySchedule(strokes, playbackRate);
   $: if (replaying) void startPenAnimation(replayNonce);
   $: if (!replaying) stopPenAnimation();
 
@@ -86,6 +84,7 @@
       const elapsedSeconds = (timestamp - startedAt) / 1000;
       const activeIndex = findActiveStroke(elapsedSeconds);
 
+      updateReplayPaths(elapsedSeconds);
       if (activeIndex >= 0) updatePenPosition(activeIndex, elapsedSeconds);
       else penVisible = false;
 
@@ -117,11 +116,7 @@
     if (!path || !stroke) return;
 
     const timing = timingFor(index);
-    const estimatedProgress = (elapsedSeconds - timing.delaySeconds) / timing.durationSeconds;
-    const renderedDashOffset = Number.parseFloat(getComputedStyle(path).strokeDashoffset);
-    const progress = Math.min(1, Math.max(0,
-      Number.isFinite(renderedDashOffset) ? 1 - renderedDashOffset : estimatedProgress
-    ));
+    const progress = strokeReplayProgress(stroke, timing, elapsedSeconds);
     const length = path.getTotalLength();
     const distance = length * progress;
     const point = path.getPointAtLength(distance);
@@ -135,8 +130,20 @@
     penVisible = true;
   }
 
+  function updateReplayPaths(elapsedSeconds: number): void {
+    replayPaths.forEach((path, index) => {
+      const stroke = strokes[index];
+      if (!path || !stroke) return;
+      path.style.strokeDashoffset = String(1 - strokeReplayProgress(
+        stroke,
+        timingFor(index),
+        elapsedSeconds
+      ));
+    });
+  }
+
   function timingFor(index: number): StrokeReplayTiming {
-    return replaySchedule[index] ?? { delaySeconds: 0, durationSeconds: replayDuration };
+    return replaySchedule[index] ?? { delaySeconds: 0, durationSeconds: 0.04 };
   }
 
   function startStroke(event: PointerEvent): void {
@@ -144,20 +151,29 @@
     if (event.button !== 0 || replaying) return;
     svg.setPointerCapture(event.pointerId);
     drawing = true;
+    currentStrokeStartedAt = event.timeStamp;
     currentStroke = {
       id: crypto.randomUUID(),
       colour: penColour,
       width: penSize,
       opacity: penType === 'pencil' ? 0.55 : 1,
-      points: [pointFromPointer(event, svg)]
+      points: [{ ...pointFromPointer(event, svg), elapsedMs: 0 }]
     };
   }
 
   function moveStroke(event: PointerEvent): void {
     if (!drawing || !currentStroke) return;
+    const coalescedEvents = event.getCoalescedEvents?.();
+    const pointerEvents = coalescedEvents?.length ? coalescedEvents : [event];
     currentStroke = {
       ...currentStroke,
-      points: [...currentStroke.points, pointFromPointer(event, svg)]
+      points: [
+        ...currentStroke.points,
+        ...pointerEvents.map((pointerEvent) => ({
+          ...pointFromPointer(pointerEvent, svg),
+          elapsedMs: Math.max(0, pointerEvent.timeStamp - currentStrokeStartedAt)
+        }))
+      ]
     };
   }
 
@@ -172,7 +188,14 @@
         return;
       }
       const point = currentStroke.points[0];
-      currentStroke.points = [point, { x: point.x + 0.0001, y: point.y + 0.0001 }];
+      currentStroke.points = [
+        point,
+        {
+          x: point.x + 0.0001,
+          y: point.y + 0.0001,
+          elapsedMs: Math.max(16, event.timeStamp - currentStrokeStartedAt)
+        }
+      ];
     }
 
     onStrokeComplete(currentStroke);
@@ -180,24 +203,17 @@
     drawing = false;
   }
 
-  function openBackgroundPicker(): void {
-    if (!backgroundInput || backgroundLoading) return;
-    backgroundInput.value = '';
-    backgroundInput.click();
-  }
-
   function handleBackgroundDrop(event: CustomEvent<BackgroundDropDetail>): void {
     backgroundDragActive = false;
     const file = event.detail.acceptedFiles[0];
 
     if (file) {
-      localBackgroundError = '';
       onBackgroundSelected(file);
       return;
     }
 
     if (event.detail.fileRejections.length) {
-      localBackgroundError = 'Choose one PNG, JPEG, or WebP image smaller than 15 MB.';
+      onBackgroundError('Choose one PNG, JPEG, or WebP image smaller than 15 MB.');
     }
   }
 
@@ -208,47 +224,10 @@
 
     if (!file) return;
     event.preventDefault();
-    localBackgroundError = '';
     onBackgroundSelected(file);
   }
 
 </script>
-
-<div class="board-topline">
-  <div class="background-actions">
-    <button
-      class="background-button"
-      on:click={openBackgroundPicker}
-      disabled={backgroundLoading}
-      title="Choose an image, or drag one onto the canvas"
-    >
-      <span aria-hidden="true">▧</span>
-      {backgroundLoading ? 'Adding…' : backgroundImage ? 'Replace background' : 'Add background'}
-    </button>
-    {#if backgroundImage}
-      <label class="opacity-control" title="Background opacity">
-        <span>Fade</span>
-        <input
-          type="range"
-          min="0.15"
-          max="1"
-          step="0.05"
-          bind:value={backgroundOpacity}
-          aria-label="Background opacity"
-        />
-      </label>
-      <button class="remove-background" on:click={onRemoveBackground} aria-label="Remove background" title="Remove background">×</button>
-    {/if}
-    {#if backgroundError || localBackgroundError}
-      <span class="background-error" role="status" title={backgroundError || localBackgroundError}>Image could not be added</span>
-    {/if}
-  </div>
-  <div class="history-actions">
-    <button on:click={onUndo} disabled={!canUndo} aria-label="Undo" title="Undo">↶</button>
-    <button on:click={onRedo} disabled={!canRedo} aria-label="Redo" title="Redo">↷</button>
-    <button class="clear-action" on:click={onClear} disabled={!canClear}>Clear</button>
-  </div>
-</div>
 
 <Dropzone
   accept={BACKGROUND_IMAGE_ACCEPT}
@@ -258,7 +237,6 @@
   noKeyboard={true}
   disableDefaultStyles={true}
   containerClasses="canvas-dropzone"
-  bind:inputElement={backgroundInput}
   on:drop={handleBackgroundDrop}
   on:dragenter={() => (backgroundDragActive = true)}
   on:dragleave={() => (backgroundDragActive = false)}
@@ -266,6 +244,12 @@
   tabindex="-1"
 >
   <div class="board-viewport" class:trace-active={traceMode} class:background-drag-active={backgroundDragActive}>
+    <div class="history-actions">
+      <button on:click={onUndo} disabled={!canUndo} aria-label="Undo" title="Undo"><Icon name="undo" /></button>
+      <button on:click={onRedo} disabled={!canRedo} aria-label="Redo" title="Redo"><Icon name="redo" /></button>
+      <span class="history-divider" aria-hidden="true"></span>
+      <button class="clear-action" on:click={onClear} disabled={!canClear} aria-label="Clear board" title="Clear board"><Icon name="clear" /></button>
+    </div>
     <div
       class={`paper lines-${lineStyle}`}
       style={`--paper:${pageColour};--zoom:${zoom}`}
@@ -301,6 +285,21 @@
       >
         {#key replayNonce}
           <g class:replaying>
+            {#if traceMode && replaying}
+              <g class="trace-stroke-layer" aria-hidden="true">
+                {#each strokes as stroke (stroke.id)}
+                  <path
+                    d={smoothPath(stroke.points, boardWidth, boardHeight)}
+                    fill="none"
+                    stroke="#9ca3af"
+                    stroke-width={stroke.width}
+                    stroke-opacity={0.42}
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                {/each}
+              </g>
+            {/if}
             {#each strokes as stroke, index (stroke.id)}
               <path
                 bind:this={replayPaths[index]}
@@ -309,7 +308,7 @@
                 fill="none"
                 stroke={stroke.colour}
                 stroke-width={stroke.width}
-                stroke-opacity={traceMode && !drawing ? Math.min(stroke.opacity, 0.25) : stroke.opacity}
+                stroke-opacity={stroke.opacity}
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 pathLength="1"
@@ -341,7 +340,7 @@
       </svg>
       {#if !strokes.length && !guideText && !backgroundImage}
         <div class="empty-prompt" aria-hidden="true">
-          <span>✎</span>
+          <Icon name="marker" size={30} />
           <p>Write something here</p>
           <small>Draw, drop an image, or paste one with Ctrl+V</small>
         </div>
@@ -357,54 +356,48 @@
 </Dropzone>
 
 <style>
-  .board-topline { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 0 8px; }
-  .background-actions { min-width: 0; display: flex; align-items: center; gap: 7px; }
-  .background-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 30px;
-    padding: 0 9px;
-    border: 1px dashed #b9b2a5;
-    border-radius: 9px;
-    background: #fffdf8;
-    color: #4f5965;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  .background-button:hover:not(:disabled) { border-color: #3569e8; color: #24589b; background: #f3f7ff; }
-  .background-button:disabled { opacity: 0.55; cursor: wait; }
-  .background-button > span { font-size: 16px; }
-  .opacity-control { display: flex; align-items: center; gap: 5px; color: #717987; font-size: 10px; font-weight: 700; }
-  .opacity-control input { width: 72px; accent-color: #3569e8; }
-  .remove-background { border: 0; background: transparent; color: #8b4f43; font-size: 18px; line-height: 1; cursor: pointer; }
-  .background-error { max-width: 125px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #a33f2d; font-size: 10px; }
-  .history-actions { display: flex; gap: 5px; }
-  .history-actions button {
-    border: 0;
-    background: transparent;
-    min-width: 32px;
-    height: 30px;
-    border-radius: 9px;
-    cursor: pointer;
-    font-weight: 700;
-  }
-  .history-actions button:hover:not(:disabled) { background: #e3dfd5; }
-  .history-actions button:disabled { opacity: 0.3; cursor: default; }
-  .history-actions .clear-action { color: #b34f3b; padding: 0 8px; font-size: 12px; }
   .board-viewport {
+    position: relative;
     min-height: 0;
     display: grid;
     place-items: center;
     overflow: hidden;
-    border: 1px solid #ccc7bc;
-    border-radius: 20px 17px 22px 16px;
-    background: #d9d5cb;
-    box-shadow: 0 9px 24px rgba(41, 45, 51, 0.13), inset 0 0 0 5px rgba(255,255,255,0.28);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: #e7e3d8;
+    box-shadow: var(--shadow-panel);
   }
+  .history-actions {
+    position: absolute;
+    z-index: 8;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 2px 8px rgba(30, 36, 48, 0.08);
+  }
+  .history-actions button {
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: transparent;
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .history-actions button:hover:not(:disabled) { background: #f0ede4; }
+  .history-actions button:disabled { opacity: 0.3; cursor: default; }
+  .history-actions .clear-action { color: #b0492f; }
+  .history-divider { width: 1px; height: 18px; background: var(--line); margin: 0 3px; }
   :global(.canvas-dropzone) { min-height: 0; display: grid; }
-  .background-drag-active { border-color: #3569e8; box-shadow: 0 0 0 4px rgba(53, 105, 232, 0.16); }
+  .background-drag-active { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(30, 36, 48, 0.15); }
   .paper {
     --paper: #fffdf7;
     --zoom: 1;
@@ -421,7 +414,7 @@
     cursor: crosshair;
     outline: none;
   }
-  .drawing-layer:focus-visible { outline: 3px solid rgba(53, 105, 232, 0.5); outline-offset: -3px; }
+  .drawing-layer:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
   .background-image { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; }
   .paper-grain { position: absolute; z-index: 2; inset: 0; pointer-events: none; opacity: 0.23; background-image: radial-gradient(#9e9a8f 0.55px, transparent 0.7px); background-size: 7px 7px; }
   .paper.lines-ruled { background-image: repeating-linear-gradient(to bottom, transparent 0 72px, #b8d4e7 73px 75px, transparent 76px 92px); }
@@ -438,16 +431,16 @@
     white-space: nowrap;
     transform: translateY(-50%);
     color: #a7b0b8;
-    font-family: "Comic Sans MS", "Segoe Print", cursive;
+    font-family: var(--hand);
     letter-spacing: 0.05em;
     opacity: 0.62;
   }
   .trace-active .guide-layer span { color: #8f9aa6; opacity: 0.78; }
-  .empty-prompt { position: absolute; z-index: 3; inset: 0; display: grid; place-content: center; text-align: center; color: #98a0a4; pointer-events: none; }
-  .empty-prompt > span { font-size: 38px; transform: rotate(-10deg); }
-  .empty-prompt p { margin: 7px 0 3px; font: 26px "Comic Sans MS", "Segoe Print", cursive; color: #747d84; }
+  .empty-prompt { position: absolute; z-index: 3; inset: 0; display: grid; place-content: center; justify-items: center; text-align: center; color: #9aa0a8; pointer-events: none; }
+  .empty-prompt p { margin: 10px 0 4px; font: 24px var(--hand); color: #6f7780; }
   .empty-prompt small { font-size: 11px; }
-  .replaying path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw-stroke var(--duration) linear var(--delay) forwards; }
+  .replaying .replay-path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .trace-stroke-layer { pointer-events: none; }
   .drop-prompt {
     position: absolute;
     z-index: 6;
@@ -455,20 +448,13 @@
     display: grid;
     place-content: center;
     gap: 5px;
-    border: 3px dashed #3569e8;
-    border-radius: 17px;
-    background: rgba(243, 247, 255, 0.92);
-    color: #24589b;
+    border: 2px dashed var(--ink);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 253, 247, 0.92);
+    color: var(--ink);
     text-align: center;
     pointer-events: none;
   }
-  .drop-prompt strong { font-size: 20px; }
-  .drop-prompt span { font-size: 11px; }
-  @keyframes draw-stroke { to { stroke-dashoffset: 0; } }
-
-  @media (max-width: 760px) {
-    .opacity-control span, .background-error { display: none; }
-    .opacity-control input { width: 54px; }
-    .background-button { max-width: 132px; overflow: hidden; white-space: nowrap; }
-  }
+  .drop-prompt strong { font-size: 18px; }
+  .drop-prompt span { font-size: 11px; color: var(--muted); }
 </style>
