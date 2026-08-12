@@ -459,4 +459,10 @@
   }
   .drop-prompt strong { font-size: 18px; }
   .drop-prompt span { font-size: 11px; color: var(--muted); }
+
+  @media (min-width: 1400px) {
+    .history-actions { top: 14px; right: 14px; gap: 3px; padding: 5px; }
+    .history-actions button { width: 38px; height: 38px; }
+    .history-divider { height: 22px; margin: 0 4px; }
+  }
 </style>

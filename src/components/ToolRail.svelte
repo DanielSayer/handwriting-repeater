@@ -131,6 +131,18 @@
   .mode-button:hover { border-color: var(--ink); transform: rotate(-.5deg); }
   .mode-button.active { background: var(--ink); border-color: var(--ink); color: #fff; transform: rotate(-.7deg); }
 
+  @media (min-width: 1400px) {
+    .tool-rail { padding: 18px 16px; }
+    .rail-section + .rail-section { margin-top: 18px; padding-top: 18px; }
+    .rail-heading { margin-bottom: 10px; font-size: 15px; }
+    .segmented { gap: 8px; }
+    .segmented button, .size-options button { min-height: 48px; }
+    .size-options { gap: 7px; }
+    .colour-grid { gap: 10px; }
+    .mode-section { gap: 9px; }
+    .mode-button { gap: 10px; min-height: 44px; padding: 10px 12px; font-size: 14px; }
+  }
+
   @media (max-width: 620px) {
     .tool-rail { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 9px; }
     .rail-section + .rail-section { border: 0; margin: 0; padding: 0; }

@@ -273,6 +273,15 @@
     gap: 12px;
   }
 
+  @media (min-width: 1400px) {
+    .workspace {
+      grid-template-columns: 208px minmax(0, 1fr) 272px;
+      gap: 20px;
+      padding: 20px;
+    }
+    .board-column { gap: 16px; }
+  }
+
   @media (max-width: 900px) {
     .app-shell { min-height: 100vh; height: auto; }
     .workspace { min-height: calc(100vh - 60px); grid-template-columns: 104px minmax(0, 1fr); }

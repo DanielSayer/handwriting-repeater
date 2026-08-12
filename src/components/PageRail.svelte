@@ -260,6 +260,27 @@
 
   .export-tool { margin-top: 20px; }
 
+  @media (min-width: 1400px) {
+    .page-rail { padding: 18px; }
+    .page-tool { gap: 12px; padding: 12px; }
+    .tool-icon { width: 40px; height: 40px; }
+    .page-tool strong { font-size: 14px; }
+    .page-tool small { margin-top: 4px; font-size: 11px; }
+    .page-group { margin-top: 22px; }
+    .rail-heading { margin-bottom: 10px; font-size: 15px; }
+    .line-options { gap: 7px; }
+    .line-options button { min-height: 46px; padding: 7px; }
+    .line-icon { width: 28px; height: 26px; }
+    .paper-options { gap: 10px; }
+    .background-add { min-height: 50px; gap: 10px; font-size: 13px; }
+    .background-hint { margin-top: 8px; font-size: 11px; }
+    .background-card { gap: 12px; padding: 10px; }
+    .background-thumb { width: 60px; height: 48px; }
+    .background-name, .background-buttons button, .fade-control, .background-error { font-size: 11px; }
+    .background-buttons button { min-height: 30px; }
+    .export-tool { margin-top: 24px; }
+  }
+
   @media (max-width: 900px) {
     .page-rail { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
     .page-group, .export-tool { margin-top: 0; }

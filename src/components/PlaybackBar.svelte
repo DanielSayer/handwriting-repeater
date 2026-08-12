@@ -68,6 +68,12 @@
   .rewrite-button:hover { filter: brightness(1.06); transform: rotate(-.5deg); }
   .rewrite-button:active { transform: translateY(1px); }
 
+  @media (min-width: 1400px) {
+    .playback-bar { gap: 24px; padding: 13px 20px; }
+    label { gap: 12px; font-size: 14px; }
+    .rewrite-button { min-width: 170px; height: 48px; font-size: 14px; }
+  }
+
   @media (max-width: 620px) {
     .playback-bar { grid-template-columns: 1fr; gap: 8px; }
     label { display: none; }
