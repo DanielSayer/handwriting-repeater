@@ -4,6 +4,7 @@ export type LineStyle = 'ruled' | 'dotted' | 'grid' | 'blank';
 export interface Point {
   x: number;
   y: number;
+  elapsedMs?: number;
 }
 
 export interface BoardStroke {

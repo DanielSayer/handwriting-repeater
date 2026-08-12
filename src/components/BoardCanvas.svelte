@@ -5,7 +5,7 @@
   import Icon from './Icon.svelte';
   import { BACKGROUND_IMAGE_ACCEPT, MAX_BACKGROUND_FILE_SIZE } from '../lib/backgroundImage';
   import { createGuideRows, pointFromPointer, smoothPath } from '../lib/drawing';
-  import { createReplaySchedule } from '../lib/replay';
+  import { createReplaySchedule, strokeReplayProgress } from '../lib/replay';
   import type { StrokeReplayTiming } from '../lib/replay';
   import type { BoardBackground, BoardStroke, LineStyle, PenType } from '../lib/types';
 
@@ -24,7 +24,7 @@
   export let traceMode: boolean;
   export let replaying: boolean;
   export let replayNonce: number;
-  export let replayDuration: number;
+  export let playbackRate: number;
   export let guideText: string;
   export let repeatCount: number;
   export let guideSize: number;
@@ -46,6 +46,7 @@
   let boardWidth = 960;
   let boardHeight = 560;
   let currentStroke: BoardStroke | null = null;
+  let currentStrokeStartedAt = 0;
   let drawing = false;
   let replayPaths: SVGPathElement[] = [];
   let penAnimationFrame: number | undefined;
@@ -57,7 +58,7 @@
   let backgroundDragActive = false;
 
   $: guideRows = createGuideRows(guideText, repeatCount);
-  $: replaySchedule = createReplaySchedule(strokes, replayDuration);
+  $: replaySchedule = createReplaySchedule(strokes, playbackRate);
   $: if (replaying) void startPenAnimation(replayNonce);
   $: if (!replaying) stopPenAnimation();
 
@@ -83,6 +84,7 @@
       const elapsedSeconds = (timestamp - startedAt) / 1000;
       const activeIndex = findActiveStroke(elapsedSeconds);
 
+      updateReplayPaths(elapsedSeconds);
       if (activeIndex >= 0) updatePenPosition(activeIndex, elapsedSeconds);
       else penVisible = false;
 
@@ -114,11 +116,7 @@
     if (!path || !stroke) return;
 
     const timing = timingFor(index);
-    const estimatedProgress = (elapsedSeconds - timing.delaySeconds) / timing.durationSeconds;
-    const renderedDashOffset = Number.parseFloat(getComputedStyle(path).strokeDashoffset);
-    const progress = Math.min(1, Math.max(0,
-      Number.isFinite(renderedDashOffset) ? 1 - renderedDashOffset : estimatedProgress
-    ));
+    const progress = strokeReplayProgress(stroke, timing, elapsedSeconds);
     const length = path.getTotalLength();
     const distance = length * progress;
     const point = path.getPointAtLength(distance);
@@ -132,8 +130,20 @@
     penVisible = true;
   }
 
+  function updateReplayPaths(elapsedSeconds: number): void {
+    replayPaths.forEach((path, index) => {
+      const stroke = strokes[index];
+      if (!path || !stroke) return;
+      path.style.strokeDashoffset = String(1 - strokeReplayProgress(
+        stroke,
+        timingFor(index),
+        elapsedSeconds
+      ));
+    });
+  }
+
   function timingFor(index: number): StrokeReplayTiming {
-    return replaySchedule[index] ?? { delaySeconds: 0, durationSeconds: replayDuration };
+    return replaySchedule[index] ?? { delaySeconds: 0, durationSeconds: 0.04 };
   }
 
   function startStroke(event: PointerEvent): void {
@@ -141,20 +151,29 @@
     if (event.button !== 0 || replaying) return;
     svg.setPointerCapture(event.pointerId);
     drawing = true;
+    currentStrokeStartedAt = event.timeStamp;
     currentStroke = {
       id: crypto.randomUUID(),
       colour: penColour,
       width: penSize,
       opacity: penType === 'pencil' ? 0.55 : 1,
-      points: [pointFromPointer(event, svg)]
+      points: [{ ...pointFromPointer(event, svg), elapsedMs: 0 }]
     };
   }
 
   function moveStroke(event: PointerEvent): void {
     if (!drawing || !currentStroke) return;
+    const coalescedEvents = event.getCoalescedEvents?.();
+    const pointerEvents = coalescedEvents?.length ? coalescedEvents : [event];
     currentStroke = {
       ...currentStroke,
-      points: [...currentStroke.points, pointFromPointer(event, svg)]
+      points: [
+        ...currentStroke.points,
+        ...pointerEvents.map((pointerEvent) => ({
+          ...pointFromPointer(pointerEvent, svg),
+          elapsedMs: Math.max(0, pointerEvent.timeStamp - currentStrokeStartedAt)
+        }))
+      ]
     };
   }
 
@@ -169,7 +188,14 @@
         return;
       }
       const point = currentStroke.points[0];
-      currentStroke.points = [point, { x: point.x + 0.0001, y: point.y + 0.0001 }];
+      currentStroke.points = [
+        point,
+        {
+          x: point.x + 0.0001,
+          y: point.y + 0.0001,
+          elapsedMs: Math.max(16, event.timeStamp - currentStrokeStartedAt)
+        }
+      ];
     }
 
     onStrokeComplete(currentStroke);
@@ -413,7 +439,7 @@
   .empty-prompt { position: absolute; z-index: 3; inset: 0; display: grid; place-content: center; justify-items: center; text-align: center; color: #9aa0a8; pointer-events: none; }
   .empty-prompt p { margin: 10px 0 4px; font: 24px var(--hand); color: #6f7780; }
   .empty-prompt small { font-size: 11px; }
-  .replaying .replay-path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw-stroke var(--duration) linear var(--delay) forwards; }
+  .replaying .replay-path { stroke-dasharray: 1; stroke-dashoffset: 1; }
   .trace-stroke-layer { pointer-events: none; }
   .drop-prompt {
     position: absolute;
@@ -431,5 +457,4 @@
   }
   .drop-prompt strong { font-size: 18px; }
   .drop-prompt span { font-size: 11px; color: var(--muted); }
-  @keyframes draw-stroke { to { stroke-dashoffset: 0; } }
 </style>

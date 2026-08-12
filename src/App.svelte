@@ -9,6 +9,7 @@
   import { DEFAULT_BOARD_STATE } from './lib/constants';
   import { prepareBackgroundImage } from './lib/backgroundImage';
   import { downloadBoardPng } from './lib/exportBoard';
+  import { createReplaySchedule, replayDuration as getReplayDuration } from './lib/replay';
   import { loadBoard, saveBoard } from './lib/storage';
   import type { BoardBackground, BoardStroke, LineStyle, PenType, PersistedBoardState } from './lib/types';
 
@@ -38,7 +39,8 @@
   let replayTimer: ReturnType<typeof setTimeout> | undefined;
   let guideDialogOpen = false;
 
-  $: replayDuration = Math.max(0.7, 4.6 - speed * 0.65);
+  $: playbackRate = 2 ** ((speed - 3) / 2);
+  $: replayDuration = getReplayDuration(createReplaySchedule(strokes, playbackRate));
   $: persistedState = {
     strokes,
     backgroundImage,
@@ -199,7 +201,7 @@
         {traceMode}
         {replaying}
         {replayNonce}
-        {replayDuration}
+        {playbackRate}
         {guideText}
         {repeatCount}
         {guideSize}
