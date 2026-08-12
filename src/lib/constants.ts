@@ -21,7 +21,7 @@ export const PAPER_OPTIONS: PaperOption[] = [
 export const DEFAULT_BOARD_STATE: PersistedBoardState = {
   strokes: [],
   backgroundImage: null,
-  backgroundOpacity: 0.55,
+  backgroundOpacity: 1,
   penColour: INK_COLOURS[0],
   penSize: 6,
   penType: 'marker',
