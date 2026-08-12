@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <pattern id="desk-dots" width="30" height="30" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.5" fill="#d5cebd" />
+    </pattern>
+    <filter id="paper-shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="7" dy="10" stdDeviation="9" flood-color="#253044" flood-opacity="0.13" />
+    </filter>
+    <clipPath id="paper-clip">
+      <rect x="704" y="92" width="390" height="446" rx="22" />
+    </clipPath>
+  </defs>
+
+  <rect width="1200" height="630" fill="#efebe0" />
+  <rect width="1200" height="630" fill="url(#desk-dots)" />
+  <path d="M0 530C230 475 420 602 646 535C859 472 1039 517 1200 459V630H0Z" fill="#e8e2d5" />
+
+  <g transform="translate(82 76)">
+    <rect width="74" height="74" rx="21" fill="#253044" />
+    <path
+      d="M17 50C23 32 40 16 58 16C56 34 41 50 20 54M20 54C34 50 46 47 59 40"
+      fill="none"
+      stroke="#fffaf0"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="6"
+    />
+    <path d="M18 60C32 57 45 53 57 48" fill="none" stroke="#e05a38" stroke-linecap="round" stroke-width="5" />
+  </g>
+
+  <text x="82" y="252" fill="#253044" font-family="Segoe UI, Arial, sans-serif" font-size="96" font-weight="750" letter-spacing="-4">Repeat</text>
+  <path d="M86 276C187 270 283 274 375 266" fill="none" stroke="#e05a38" stroke-linecap="round" stroke-width="8" />
+  <text x="84" y="340" fill="#707885" font-family="Segoe UI, Arial, sans-serif" font-size="29" font-weight="650" letter-spacing="4">HANDWRITING WHITEBOARD</text>
+  <text x="84" y="419" fill="#253044" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="500">Practise. Trace. Replay.</text>
+  <text x="84" y="470" fill="#707885" font-family="Segoe UI, Arial, sans-serif" font-size="25">Private and saved in your browser.</text>
+
+  <g filter="url(#paper-shadow)" transform="rotate(2 899 315)">
+    <rect x="704" y="92" width="390" height="446" rx="22" fill="#fffdf7" stroke="#d7d0c0" stroke-width="3" />
+    <g clip-path="url(#paper-clip)">
+      <path d="M704 202H1094M704 294H1094M704 386H1094M704 478H1094" stroke="#b8d4e7" stroke-width="3" />
+      <path d="M771 92V538" stroke="#efb5a5" stroke-width="3" />
+      <path
+        d="M804 247C833 175 871 170 868 227C865 287 835 293 814 270C790 244 843 217 893 229C927 237 921 277 899 279C876 281 876 249 904 242C931 235 950 259 978 246C1001 236 1018 222 1033 205"
+        fill="none"
+        stroke="#253044"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="11"
+      />
+      <path
+        d="M808 360C844 330 877 331 886 358C894 382 868 398 843 385C819 372 844 344 886 350C922 355 941 394 975 381C1004 370 1020 351 1038 330"
+        fill="none"
+        stroke="#3569e8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="9"
+      />
+      <circle cx="1029" cy="446" r="25" fill="#e05a38" opacity="0.14" />
+      <path d="M1018 447L1027 456L1042 436" fill="none" stroke="#e05a38" stroke-linecap="round" stroke-linejoin="round" stroke-width="6" />
+    </g>
+  </g>
+</svg>

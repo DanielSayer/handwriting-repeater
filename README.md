@@ -4,6 +4,8 @@
 
 A private, browser-local handwriting whiteboard. Draw naturally, add practice guides, trace an image, replay strokes at their original pace, and export the finished board as a PNG.
 
+[Open Repeat](https://handwriting-repeater.vercel.app)
+
 ## Features
 
 - Marker and pencil tools with adjustable colour and width
@@ -13,6 +15,7 @@ A private, browser-local handwriting whiteboard. Draw naturally, add practice gu
 - Stroke replay with speed control and optional looping
 - Browser-local persistence and PNG export
 - Responsive layouts for desktop, tablet, and mobile
+- Branded large-card previews when a deployed link is shared
 
 Repeat has no backend. Board content and imported images stay in the browser's local storage unless the user exports a PNG.
 
