@@ -1,6 +1,7 @@
 <script lang="ts">
   import { INK_COLOURS } from '../lib/constants';
   import type { PenType } from '../lib/types';
+  import Icon from './Icon.svelte';
 
   export let penType: PenType;
   export let penSize: number;
@@ -13,8 +14,12 @@
   <div class="rail-section">
     <span class="rail-heading">Ink</span>
     <div class="segmented" aria-label="Pen type">
-      <button class:active={penType === 'marker'} on:click={() => (penType = 'marker')} title="Marker">✎</button>
-      <button class:active={penType === 'pencil'} on:click={() => (penType = 'pencil')} title="Pencil">✐</button>
+      <button class:active={penType === 'marker'} on:click={() => (penType = 'marker')} title="Marker" aria-label="Marker pen">
+        <Icon name="marker" size={20} />
+      </button>
+      <button class:active={penType === 'pencil'} on:click={() => (penType = 'pencil')} title="Pencil" aria-label="Pencil">
+        <Icon name="pencil" size={20} />
+      </button>
     </div>
   </div>
 
@@ -48,10 +53,10 @@
   <div class="rail-section mode-section">
     <span class="rail-heading">Modes</span>
     <button class="mode-button" class:active={traceMode} on:click={() => (traceMode = !traceMode)}>
-      <span>〰</span><span>Trace</span>
+      <Icon name="trace" /><span>Trace</span>
     </button>
     <button class="mode-button" class:active={loopMode} on:click={() => (loopMode = !loopMode)}>
-      <span>↻</span><span>Loop</span>
+      <Icon name="loop" /><span>Loop</span>
     </button>
   </div>
 </aside>
@@ -61,16 +66,16 @@
     min-height: 0;
     padding: 14px 12px;
     overflow: auto;
-    background: rgba(248, 246, 240, 0.96);
+    background: var(--panel);
     border: 1px solid var(--line);
-    border-radius: 18px 16px 20px 15px;
-    box-shadow: 0 8px 24px rgba(41, 45, 51, 0.07);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-panel);
   }
-  .rail-section + .rail-section { border-top: 1px dashed #d9d3c7; margin-top: 14px; padding-top: 14px; }
+  .rail-section + .rail-section { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
   .rail-heading {
     display: block;
-    margin-bottom: 9px;
-    color: #808694;
+    margin-bottom: 8px;
+    color: var(--muted);
     font-size: 10px;
     line-height: 1;
     font-weight: 700;
@@ -79,32 +84,33 @@
   }
   .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .segmented button, .size-options button {
-    border: 1px solid #d3cec3;
-    background: #fffdf8;
-    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    border-radius: 8px;
     min-height: 38px;
     cursor: pointer;
   }
-  .segmented button { font-size: 23px; }
+  .segmented button:hover, .size-options button:hover { border-color: var(--ink); }
   .segmented button.active, .size-options button.active {
     color: #fff;
     border-color: var(--ink);
     background: var(--ink);
-    box-shadow: 2px 2px 0 #b9b3a7;
   }
   .size-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
-  .size-options button { display: grid; place-items: center; }
   .size-options span { display: block; border-radius: 50%; background: currentColor; }
   .colour-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
   .colour-grid button {
     aspect-ratio: 1;
-    border: 2px solid #fffdf8;
-    border-radius: 50% 45% 55% 48%;
+    border: 0;
+    border-radius: 50%;
     background: var(--swatch);
-    box-shadow: 0 0 0 1px #d0cbc1;
+    box-shadow: inset 0 0 0 1px rgba(30, 36, 48, 0.12);
     cursor: pointer;
   }
-  .colour-grid button.active { box-shadow: 0 0 0 3px #fffdf8, 0 0 0 5px var(--ink); }
+  .colour-grid button:hover { transform: scale(1.06); }
+  .colour-grid button.active { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--ink); }
   .mode-section { display: grid; gap: 7px; }
   .mode-section .rail-heading { grid-column: 1 / -1; }
   .mode-button {
@@ -112,16 +118,17 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    border: 1px solid #d3cec3;
-    background: #fffdf8;
-    border-radius: 10px;
-    padding: 8px 9px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    border-radius: 8px;
+    padding: 8px 10px;
     font-size: 12px;
     font-weight: 650;
     cursor: pointer;
+    color: var(--ink);
   }
-  .mode-button > span:first-child { font-size: 19px; }
-  .mode-button.active { background: #e8f3ff; border-color: #a8c2e4; color: #24589b; }
+  .mode-button:hover { border-color: var(--ink); }
+  .mode-button.active { background: var(--ink); border-color: var(--ink); color: #fff; }
 
   @media (max-width: 620px) {
     .tool-rail { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 9px; }

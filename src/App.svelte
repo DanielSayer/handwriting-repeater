@@ -204,9 +204,7 @@
         {repeatCount}
         {guideSize}
         {backgroundImage}
-        bind:backgroundOpacity
-        {backgroundLoading}
-        {backgroundError}
+        {backgroundOpacity}
         canUndo={strokes.length > 0}
         canRedo={redoStack.length > 0}
         canClear={strokes.length > 0 || Boolean(guideText)}
@@ -216,7 +214,7 @@
         onRedo={redo}
         onClear={clearBoard}
         onBackgroundSelected={(file) => void setBackground(file)}
-        onRemoveBackground={removeBackground}
+        onBackgroundError={(message) => (backgroundError = message)}
       />
       <PlaybackBar bind:zoom bind:speed {replaying} onReplay={replay} onStop={stopReplay} />
     </section>
@@ -224,8 +222,14 @@
     <PageRail
       bind:lineStyle
       bind:pageColour
+      bind:backgroundOpacity
+      {backgroundImage}
+      {backgroundLoading}
+      {backgroundError}
       onOpenGuide={() => (guideDialogOpen = true)}
       onExport={exportBoard}
+      onBackgroundSelected={(file) => void setBackground(file)}
+      onRemoveBackground={removeBackground}
     />
   </main>
 </div>
@@ -245,32 +249,33 @@
     height: 100vh;
     display: flex;
     flex-direction: column;
-    background-color: #f4f1e8;
-    background-image: radial-gradient(#d4cfc3 1px, transparent 1px);
-    background-size: 22px 22px;
+    background-color: var(--desk);
+    background-image: radial-gradient(#dcd7c9 1px, transparent 1.2px);
+    background-size: 24px 24px;
   }
   .workspace {
     min-height: 0;
     flex: 1;
     display: grid;
-    grid-template-columns: 144px minmax(0, 1fr) 210px;
-    gap: 14px;
-    padding: 14px;
+    grid-template-columns: 168px minmax(0, 1fr) 224px;
+    gap: 16px;
+    padding: 16px;
   }
   .board-column {
     min-width: 0;
     min-height: 0;
     display: grid;
-    grid-template-rows: 38px minmax(0, 1fr) 66px;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 12px;
   }
 
   @media (max-width: 900px) {
     .app-shell { min-height: 100vh; height: auto; }
-    .workspace { min-height: calc(100vh - 78px); grid-template-columns: 94px minmax(0, 1fr); }
+    .workspace { min-height: calc(100vh - 60px); grid-template-columns: 104px minmax(0, 1fr); }
     .board-column { min-height: 620px; }
   }
   @media (max-width: 620px) {
-    .workspace { grid-template-columns: 1fr; padding: 9px; gap: 9px; }
+    .workspace { grid-template-columns: 1fr; padding: 10px; gap: 10px; }
     .board-column { min-height: 570px; grid-row: 2; }
   }
 </style>

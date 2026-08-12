@@ -16,39 +16,50 @@
 
 <style>
   .topbar {
-    height: 78px;
+    height: 60px;
     flex: 0 0 auto;
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px 22px;
-    background: rgba(250, 248, 242, 0.94);
-    border-bottom: 1px solid #d8d3c8;
-    box-shadow: 0 4px 18px rgba(36, 43, 50, 0.06);
+    gap: 11px;
+    padding: 10px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
     z-index: 10;
   }
   .brand-mark {
-    width: 48px;
-    height: 48px;
+    width: 38px;
+    height: 38px;
     display: grid;
     place-items: center;
-    border-radius: 15px 12px 16px 11px;
+    border-radius: 10px;
     background: var(--ink);
-    transform: rotate(-2deg);
   }
   .brand-mark svg {
-    width: 36px;
+    width: 28px;
     fill: none;
     stroke: #fffaf0;
     stroke-width: 3;
     stroke-linecap: round;
   }
-  .brand-copy h1 { margin: 0; font-size: 23px; letter-spacing: -0.5px; line-height: 1; }
-  .brand-copy p { margin: 5px 0 0; color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
+  .brand-copy h1 {
+    margin: 0;
+    font-family: var(--hand);
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .brand-copy p {
+    margin: 3px 0 0;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
   @media (max-width: 620px) {
-    .topbar { height: 68px; padding: 10px 13px; }
-    .brand-mark { width: 42px; height: 42px; }
-    .brand-copy h1 { font-size: 20px; }
+    .topbar { height: 54px; padding: 8px 14px; }
+    .brand-mark { width: 34px; height: 34px; }
+    .brand-copy h1 { font-size: 18px; }
     .brand-copy p { display: none; }
   }
 </style>
