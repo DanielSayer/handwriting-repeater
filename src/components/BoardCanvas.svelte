@@ -30,14 +30,8 @@
   export let guideSize: number;
   export let backgroundImage: BoardBackground | null;
   export let backgroundOpacity: number;
-  export let canUndo: boolean;
-  export let canRedo: boolean;
-  export let canClear: boolean;
   export let onStrokeComplete: (stroke: BoardStroke) => void;
   export let onResize: (width: number, height: number) => void;
-  export let onUndo: () => void;
-  export let onRedo: () => void;
-  export let onClear: () => void;
   export let onBackgroundSelected: (file: File) => void;
   export let onBackgroundError: (message: string) => void;
 
@@ -250,22 +244,6 @@
     class:trace-active={traceMode}
     class:background-drag-active={backgroundDragActive}
   >
-    <div class="history-actions">
-      <button on:click={onUndo} disabled={!canUndo} aria-label="Undo" title="Undo"
-        ><Icon name="undo" /></button
-      >
-      <button on:click={onRedo} disabled={!canRedo} aria-label="Redo" title="Redo"
-        ><Icon name="redo" /></button
-      >
-      <span class="history-divider" aria-hidden="true"></span>
-      <button
-        class="clear-action"
-        on:click={onClear}
-        disabled={!canClear}
-        aria-label="Clear board"
-        title="Clear board"><Icon name="clear" /></button
-      >
-    </div>
     <div
       class={`paper lines-${lineStyle}`}
       style={`--paper:${pageColour};--zoom:${zoom}`}
@@ -382,48 +360,6 @@
     border-radius: 14px 18px 13px 16px;
     background: #e2ddd0;
     box-shadow: var(--shadow-panel);
-  }
-  .history-actions {
-    position: absolute;
-    z-index: 8;
-    top: 10px;
-    right: 10px;
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    padding: 4px;
-    border: 1.5px solid var(--line);
-    border-radius: 9px 12px 8px 11px;
-    background: rgba(255, 255, 255, 0.92);
-    box-shadow: 0 2px 8px rgba(30, 36, 48, 0.08);
-    transform: rotate(0.35deg);
-  }
-  .history-actions button {
-    display: grid;
-    place-items: center;
-    border: 0;
-    background: transparent;
-    width: 32px;
-    height: 32px;
-    border-radius: 47% 53% 45% 55%;
-    cursor: pointer;
-    color: var(--ink);
-  }
-  .history-actions button:hover:not(:disabled) {
-    background: #f0ede4;
-  }
-  .history-actions button:disabled {
-    opacity: 0.3;
-    cursor: default;
-  }
-  .history-actions .clear-action {
-    color: #b0492f;
-  }
-  .history-divider {
-    width: 1px;
-    height: 18px;
-    background: var(--line);
-    margin: 0 3px;
   }
   :global(.canvas-dropzone) {
     min-height: 0;
@@ -569,22 +505,5 @@
   .drop-prompt span {
     font-size: 11px;
     color: var(--muted);
-  }
-
-  @media (min-width: 1400px) {
-    .history-actions {
-      top: 14px;
-      right: 14px;
-      gap: 3px;
-      padding: 5px;
-    }
-    .history-actions button {
-      width: 38px;
-      height: 38px;
-    }
-    .history-divider {
-      height: 22px;
-      margin: 0 4px;
-    }
   }
 </style>

@@ -204,7 +204,19 @@
 <div class="app-shell">
   <AppHeader />
   <main class="workspace">
-    <ToolRail bind:penType bind:penSize bind:penColour bind:traceMode bind:loopMode />
+    <ToolRail
+      bind:penType
+      bind:penSize
+      bind:penColour
+      bind:traceMode
+      bind:loopMode
+      canUndo={strokes.length > 0}
+      canRedo={redoStack.length > 0}
+      canClear={strokes.length > 0 || Boolean(guideText)}
+      onUndo={undo}
+      onRedo={redo}
+      onClear={clearBoard}
+    />
 
     <section class="board-column" aria-label="Drawing workspace">
       <BoardCanvas
@@ -224,17 +236,11 @@
         {guideSize}
         {backgroundImage}
         {backgroundOpacity}
-        canUndo={strokes.length > 0}
-        canRedo={redoStack.length > 0}
-        canClear={strokes.length > 0 || Boolean(guideText)}
         onStrokeComplete={addStroke}
         onResize={(width, height) => {
           boardWidth = width;
           boardHeight = height;
         }}
-        onUndo={undo}
-        onRedo={redo}
-        onClear={clearBoard}
         onBackgroundSelected={(file) => void setBackground(file)}
         onBackgroundError={(message) => (backgroundError = message)}
       />

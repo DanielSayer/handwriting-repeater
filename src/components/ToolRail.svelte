@@ -8,9 +8,36 @@
   export let penColour: string;
   export let traceMode: boolean;
   export let loopMode: boolean;
+  export let canUndo: boolean;
+  export let canRedo: boolean;
+  export let canClear: boolean;
+  export let onUndo: () => void;
+  export let onRedo: () => void;
+  export let onClear: () => void;
 </script>
 
-<aside class="tool-rail" aria-label="Pen tools">
+<aside class="tool-rail" aria-label="Drawing tools">
+  <div class="rail-section edit-section">
+    <span class="rail-heading">Edit</span>
+    <div class="edit-actions" aria-label="Board editing actions">
+      <button on:click={onUndo} disabled={!canUndo} aria-label="Undo" title="Undo">
+        <Icon name="undo" />
+      </button>
+      <button on:click={onRedo} disabled={!canRedo} aria-label="Redo" title="Redo">
+        <Icon name="redo" />
+      </button>
+      <button
+        class="clear-action"
+        on:click={onClear}
+        disabled={!canClear}
+        aria-label="Clear board"
+        title="Clear board"
+      >
+        <Icon name="clear" />
+      </button>
+    </div>
+  </div>
+
   <div class="rail-section">
     <span class="rail-heading">Ink</span>
     <div class="segmented" aria-label="Pen type">
@@ -113,6 +140,35 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 6px;
+  }
+  .edit-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+  }
+  .edit-actions button {
+    min-width: 0;
+    min-height: 38px;
+    display: grid;
+    place-items: center;
+    border: 1.5px solid var(--line);
+    border-radius: 8px 10px 7px 11px;
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .edit-actions button:hover:not(:disabled) {
+    border-color: var(--ink);
+    transform: rotate(-1deg);
+  }
+  .edit-actions button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  .edit-actions .clear-action {
+    margin-left: 3px;
+    border-color: #d8b2a8;
+    color: #b0492f;
   }
   .segmented button,
   .size-options button {
@@ -218,7 +274,8 @@
       gap: 8px;
     }
     .segmented button,
-    .size-options button {
+    .size-options button,
+    .edit-actions button {
       min-height: 48px;
     }
     .size-options {
@@ -241,7 +298,7 @@
   @media (max-width: 620px) {
     .tool-rail {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 8px;
       padding: 9px;
     }
@@ -252,6 +309,9 @@
     }
     .mode-section {
       grid-template-columns: 1fr 1fr;
+    }
+    .edit-section {
+      grid-column: 1 / -1;
     }
     .mode-button {
       justify-content: center;
