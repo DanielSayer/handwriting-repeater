@@ -252,8 +252,10 @@
     display: flex;
     flex-direction: column;
     background-color: var(--desk);
-    background-image: radial-gradient(#dcd7c9 1px, transparent 1.2px);
-    background-size: 24px 24px;
+    background-image:
+      radial-gradient(#d5cebd 1px, transparent 1.2px),
+      linear-gradient(104deg, transparent 49.8%, rgba(255,255,255,.28) 50%, transparent 50.2%);
+    background-size: 24px 24px, 180px 180px;
   }
   .workspace {
     min-height: 0;

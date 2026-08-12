@@ -23,7 +23,8 @@
     gap: 11px;
     padding: 10px 20px;
     background: var(--panel);
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1.5px solid var(--line);
+    box-shadow: 0 3px 0 rgba(37, 48, 68, 0.035);
     z-index: 10;
   }
   .brand-mark {
@@ -31,8 +32,10 @@
     height: 38px;
     display: grid;
     place-items: center;
-    border-radius: 10px;
+    border-radius: 48% 43% 46% 40%;
     background: var(--ink);
+    box-shadow: 2px 3px 0 var(--accent);
+    transform: rotate(-2deg);
   }
   .brand-mark svg {
     width: 28px;
@@ -42,11 +45,23 @@
     stroke-linecap: round;
   }
   .brand-copy h1 {
+    position: relative;
     margin: 0;
     font-family: var(--hand);
-    font-size: 21px;
+    font-size: 23px;
     font-weight: 700;
     line-height: 1;
+  }
+  .brand-copy h1::after {
+    content: '';
+    position: absolute;
+    left: 1px;
+    bottom: -3px;
+    width: 54px;
+    height: 2px;
+    border-radius: 50%;
+    background: var(--accent);
+    transform: rotate(-2deg);
   }
   .brand-copy p {
     margin: 3px 0 0;
