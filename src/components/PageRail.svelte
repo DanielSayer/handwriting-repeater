@@ -441,7 +441,7 @@
     }
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 1199px) {
     .page-rail {
       grid-column: 1 / -1;
       display: grid;

@@ -316,7 +316,7 @@
     }
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 1199px) {
     .app-shell {
       min-height: 100vh;
       height: auto;
@@ -326,7 +326,9 @@
       grid-template-columns: 104px minmax(0, 1fr);
     }
     .board-column {
-      min-height: 620px;
+      min-height: 0;
+      align-self: center;
+      grid-template-rows: auto auto;
     }
   }
   @media (max-width: 620px) {
@@ -336,7 +338,6 @@
       gap: 10px;
     }
     .board-column {
-      min-height: 570px;
       grid-row: 2;
     }
   }

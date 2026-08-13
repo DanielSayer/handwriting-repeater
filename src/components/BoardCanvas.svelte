@@ -42,7 +42,7 @@
   export let onBackgroundError: (message: string) => void;
 
   let svg: SVGSVGElement;
-  let boardViewport: HTMLDivElement;
+  let boardStage: HTMLDivElement;
   let viewportWidth = BOARD_WIDTH;
   let viewportHeight = BOARD_HEIGHT;
   let currentStroke: BoardStroke | null = null;
@@ -66,7 +66,7 @@
 
   onMount(() => {
     const measureViewport = (): void => {
-      const rect = boardViewport.getBoundingClientRect();
+      const rect = boardStage.getBoundingClientRect();
       viewportWidth = rect.width;
       viewportHeight = rect.height;
     };
@@ -76,7 +76,7 @@
     };
     const observer = new ResizeObserver(measureViewport);
 
-    observer.observe(boardViewport);
+    observer.observe(boardStage);
     window.addEventListener('resize', measureOnNextFrame);
     document.addEventListener('fullscreenchange', measureOnNextFrame);
     measureViewport();
@@ -260,122 +260,128 @@
   role="presentation"
   tabindex="-1"
 >
-  <div
-    class="board-viewport"
-    class:trace-active={traceMode}
-    class:background-drag-active={backgroundDragActive}
-    bind:this={boardViewport}
-  >
+  <div class="board-stage" bind:this={boardStage}>
     <div
-      class={`paper lines-${lineStyle}`}
-      style={`--paper:${pageColour};--zoom:${zoom};width:${paperSize.width}px;height:${paperSize.height}px`}
+      class="board-viewport"
+      class:trace-active={traceMode}
+      class:background-drag-active={backgroundDragActive}
+      style={`width:${paperSize.width * zoom}px;height:${paperSize.height * zoom}px`}
     >
-      {#if backgroundImage}
-        <img
-          class="background-image"
-          src={backgroundImage.src}
-          alt=""
-          style={`opacity:${backgroundOpacity}`}
-        />
-      {/if}
-      <div class="paper-grain"></div>
-      <div class="guide-layer" aria-hidden="true">
-        {#each guideRows as row (row.id)}
-          <span style={`top:${row.topPercent}%;font-size:${guideSize}px`}>{row.text}</span>
-        {/each}
-      </div>
-      <!-- svelte-ignore a11y_no_noninteractive_tabindex (the drawing surface needs focus for clipboard paste) -->
-      <svg
-        class="drawing-layer"
-        bind:this={svg}
-        viewBox={`0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`}
-        tabindex="0"
-        aria-label="Handwriting canvas. Paste an image to use it as a background."
-        role="application"
-        on:pointerdown={startStroke}
-        on:pointermove={moveStroke}
-        on:pointerup={endStroke}
-        on:pointercancel={endStroke}
-        on:paste={handleCanvasPaste}
+      <div
+        class={`paper lines-${lineStyle}`}
+        style={`--paper:${pageColour};--zoom:${zoom};width:${paperSize.width}px;height:${paperSize.height}px`}
       >
-        {#key replayNonce}
-          <g class:replaying>
-            {#if traceMode && replaying}
-              <g class="trace-stroke-layer" aria-hidden="true">
-                {#each strokes as stroke (stroke.id)}
-                  <path
-                    d={smoothPath(stroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
-                    fill="none"
-                    stroke="#9ca3af"
-                    stroke-width={stroke.width}
-                    stroke-opacity={0.42}
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                {/each}
-              </g>
-            {/if}
-            {#each strokes as stroke, index (stroke.id)}
-              <path
-                bind:this={replayPaths[index]}
-                class="replay-path"
-                d={smoothPath(stroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
-                fill="none"
-                stroke={stroke.colour}
-                stroke-width={stroke.width}
-                stroke-opacity={stroke.opacity}
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                pathLength="1"
-                style={`--delay:${timingFor(index).delaySeconds}s;--duration:${timingFor(index).durationSeconds}s`}
-              />
-            {/each}
-          </g>
-        {/key}
-        {#if penVisible}
-          <AnimatedPen
-            x={penX}
-            y={penY}
-            rotation={penRotation}
-            colour={animatedPenColour}
-            scale={1}
+        {#if backgroundImage}
+          <img
+            class="background-image"
+            src={backgroundImage.src}
+            alt=""
+            style={`opacity:${backgroundOpacity}`}
           />
         {/if}
-        {#if currentStroke}
-          <path
-            d={smoothPath(currentStroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
-            fill="none"
-            stroke={currentStroke.colour}
-            stroke-width={currentStroke.width}
-            stroke-opacity={currentStroke.opacity}
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
+        <div class="paper-grain"></div>
+        <div class="guide-layer" aria-hidden="true">
+          {#each guideRows as row (row.id)}
+            <span style={`top:${row.topPercent}%;font-size:${guideSize}px`}>{row.text}</span>
+          {/each}
+        </div>
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex (the drawing surface needs focus for clipboard paste) -->
+        <svg
+          class="drawing-layer"
+          bind:this={svg}
+          viewBox={`0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`}
+          tabindex="0"
+          aria-label="Handwriting canvas. Paste an image to use it as a background."
+          role="application"
+          on:pointerdown={startStroke}
+          on:pointermove={moveStroke}
+          on:pointerup={endStroke}
+          on:pointercancel={endStroke}
+          on:paste={handleCanvasPaste}
+        >
+          {#key replayNonce}
+            <g class:replaying>
+              {#if traceMode && replaying}
+                <g class="trace-stroke-layer" aria-hidden="true">
+                  {#each strokes as stroke (stroke.id)}
+                    <path
+                      d={smoothPath(stroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
+                      fill="none"
+                      stroke="#9ca3af"
+                      stroke-width={stroke.width}
+                      stroke-opacity={0.42}
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  {/each}
+                </g>
+              {/if}
+              {#each strokes as stroke, index (stroke.id)}
+                <path
+                  bind:this={replayPaths[index]}
+                  class="replay-path"
+                  d={smoothPath(stroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
+                  fill="none"
+                  stroke={stroke.colour}
+                  stroke-width={stroke.width}
+                  stroke-opacity={stroke.opacity}
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  pathLength="1"
+                  style={`--delay:${timingFor(index).delaySeconds}s;--duration:${timingFor(index).durationSeconds}s`}
+                />
+              {/each}
+            </g>
+          {/key}
+          {#if penVisible}
+            <AnimatedPen
+              x={penX}
+              y={penY}
+              rotation={penRotation}
+              colour={animatedPenColour}
+              scale={1}
+            />
+          {/if}
+          {#if currentStroke}
+            <path
+              d={smoothPath(currentStroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
+              fill="none"
+              stroke={currentStroke.colour}
+              stroke-width={currentStroke.width}
+              stroke-opacity={currentStroke.opacity}
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          {/if}
+        </svg>
+        {#if !strokes.length && !guideText && !backgroundImage}
+          <div class="empty-prompt" aria-hidden="true">
+            <Icon name="marker" size={30} />
+            <p>Write something here</p>
+            <small>Draw, drop an image, or paste one with Ctrl+V</small>
+          </div>
         {/if}
-      </svg>
-      {#if !strokes.length && !guideText && !backgroundImage}
-        <div class="empty-prompt" aria-hidden="true">
-          <Icon name="marker" size={30} />
-          <p>Write something here</p>
-          <small>Draw, drop an image, or paste one with Ctrl+V</small>
-        </div>
-      {/if}
-      {#if backgroundDragActive}
-        <div class="drop-prompt" aria-hidden="true">
-          <strong>Drop image to trace</strong>
-          <span>PNG, JPEG, or WebP</span>
-        </div>
-      {/if}
+        {#if backgroundDragActive}
+          <div class="drop-prompt" aria-hidden="true">
+            <strong>Drop image to trace</strong>
+            <span>PNG, JPEG, or WebP</span>
+          </div>
+        {/if}
+      </div>
     </div>
   </div>
 </Dropzone>
 
 <style>
-  .board-viewport {
-    position: relative;
+  .board-stage {
+    min-width: 0;
     min-height: 0;
     display: grid;
     place-items: center;
+    overflow: hidden;
+  }
+  .board-viewport {
+    position: relative;
     overflow: hidden;
     border: 1.5px solid var(--line);
     border-radius: 14px 18px 13px 16px;
@@ -522,5 +528,11 @@
   .drop-prompt span {
     font-size: 11px;
     color: var(--muted);
+  }
+
+  @media (max-width: 1199px) {
+    :global(.canvas-dropzone) {
+      aspect-ratio: 12 / 7;
+    }
   }
 </style>
