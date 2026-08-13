@@ -1,5 +1,21 @@
 import type { GuideRow, Point } from './types';
 
+export function fitBoardToViewport(
+  viewportWidth: number,
+  viewportHeight: number,
+  zoom: number,
+  aspectRatio: number
+): { width: number; height: number } {
+  const safeZoom = Math.max(zoom, 0.01);
+  const displayWidth = Math.min(viewportWidth, viewportHeight * aspectRatio);
+  const displayHeight = displayWidth / aspectRatio;
+
+  return {
+    width: displayWidth / safeZoom,
+    height: displayHeight / safeZoom
+  };
+}
+
 export function pointFromPointer(event: PointerEvent, element: SVGSVGElement): Point {
   const rect = element.getBoundingClientRect();
   return {

@@ -1,6 +1,9 @@
 import type { PaperOption, PersistedBoardState } from './types';
 
 export const STORAGE_KEY = 'repeat-whiteboard-v1';
+export const BOARD_WIDTH = 960;
+export const BOARD_HEIGHT = 560;
+export const BOARD_ASPECT_RATIO = BOARD_WIDTH / BOARD_HEIGHT;
 
 export const INK_COLOURS = [
   '#18243d',

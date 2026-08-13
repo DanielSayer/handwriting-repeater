@@ -1,5 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { createGuideRows, smoothPath } from './drawing';
+import { createGuideRows, fitBoardToViewport, smoothPath } from './drawing';
+
+describe('fitBoardToViewport', () => {
+  it('preserves the board aspect ratio when the viewport gets wider', () => {
+    expect(fitBoardToViewport(1200, 560, 1, 12 / 7)).toEqual({
+      width: 960,
+      height: 560
+    });
+  });
+
+  it('preserves the board aspect ratio when the viewport gets taller', () => {
+    expect(fitBoardToViewport(960, 800, 1, 12 / 7)).toEqual({
+      width: 960,
+      height: 560
+    });
+  });
+
+  it('accounts for CSS zoom without changing the displayed board size', () => {
+    expect(fitBoardToViewport(960, 560, 1.25, 12 / 7)).toEqual({
+      width: 768,
+      height: 448
+    });
+  });
+});
 
 describe('smoothPath', () => {
   it('returns an empty path when there are no points', () => {

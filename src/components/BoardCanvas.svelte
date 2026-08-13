@@ -4,7 +4,13 @@
   import AnimatedPen from './AnimatedPen.svelte';
   import Icon from './Icon.svelte';
   import { BACKGROUND_IMAGE_ACCEPT, MAX_BACKGROUND_FILE_SIZE } from '../lib/backgroundImage';
-  import { createGuideRows, pointFromPointer, smoothPath } from '../lib/drawing';
+  import { BOARD_ASPECT_RATIO, BOARD_HEIGHT, BOARD_WIDTH } from '../lib/constants';
+  import {
+    createGuideRows,
+    fitBoardToViewport,
+    pointFromPointer,
+    smoothPath
+  } from '../lib/drawing';
   import { createReplaySchedule, strokeReplayProgress } from '../lib/replay';
   import type { StrokeReplayTiming } from '../lib/replay';
   import type { BoardBackground, BoardStroke, LineStyle, PenType } from '../lib/types';
@@ -36,9 +42,9 @@
   export let onBackgroundError: (message: string) => void;
 
   let svg: SVGSVGElement;
-  let boardShell: HTMLDivElement;
-  let boardWidth = 960;
-  let boardHeight = 560;
+  let boardViewport: HTMLDivElement;
+  let viewportWidth = BOARD_WIDTH;
+  let viewportHeight = BOARD_HEIGHT;
   let currentStroke: BoardStroke | null = null;
   let currentStrokeStartedAt = 0;
   let drawing = false;
@@ -50,21 +56,36 @@
   let penRotation = -55;
   let animatedPenColour = penColour;
   let backgroundDragActive = false;
+  let resizeAnimationFrame: number | undefined;
 
   $: guideRows = createGuideRows(guideText, repeatCount);
   $: replaySchedule = createReplaySchedule(strokes, playbackRate);
+  $: paperSize = fitBoardToViewport(viewportWidth, viewportHeight, zoom, BOARD_ASPECT_RATIO);
   $: if (replaying) void startPenAnimation(replayNonce);
   $: if (!replaying) stopPenAnimation();
 
   onMount(() => {
-    const observer = new ResizeObserver(([entry]) => {
-      boardWidth = Math.max(320, entry.contentRect.width);
-      boardHeight = Math.max(360, entry.contentRect.height);
-      onResize(boardWidth, boardHeight);
-    });
-    observer.observe(boardShell);
+    const measureViewport = (): void => {
+      const rect = boardViewport.getBoundingClientRect();
+      viewportWidth = rect.width;
+      viewportHeight = rect.height;
+    };
+    const measureOnNextFrame = (): void => {
+      if (resizeAnimationFrame !== undefined) cancelAnimationFrame(resizeAnimationFrame);
+      resizeAnimationFrame = requestAnimationFrame(measureViewport);
+    };
+    const observer = new ResizeObserver(measureViewport);
+
+    observer.observe(boardViewport);
+    window.addEventListener('resize', measureOnNextFrame);
+    document.addEventListener('fullscreenchange', measureOnNextFrame);
+    measureViewport();
+    onResize(BOARD_WIDTH, BOARD_HEIGHT);
     return () => {
       observer.disconnect();
+      window.removeEventListener('resize', measureOnNextFrame);
+      document.removeEventListener('fullscreenchange', measureOnNextFrame);
+      if (resizeAnimationFrame !== undefined) cancelAnimationFrame(resizeAnimationFrame);
       stopPenAnimation();
     };
   });
@@ -243,11 +264,11 @@
     class="board-viewport"
     class:trace-active={traceMode}
     class:background-drag-active={backgroundDragActive}
+    bind:this={boardViewport}
   >
     <div
       class={`paper lines-${lineStyle}`}
-      style={`--paper:${pageColour};--zoom:${zoom}`}
-      bind:this={boardShell}
+      style={`--paper:${pageColour};--zoom:${zoom};width:${paperSize.width}px;height:${paperSize.height}px`}
     >
       {#if backgroundImage}
         <img
@@ -267,7 +288,7 @@
       <svg
         class="drawing-layer"
         bind:this={svg}
-        viewBox={`0 0 ${boardWidth} ${boardHeight}`}
+        viewBox={`0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`}
         tabindex="0"
         aria-label="Handwriting canvas. Paste an image to use it as a background."
         role="application"
@@ -283,7 +304,7 @@
               <g class="trace-stroke-layer" aria-hidden="true">
                 {#each strokes as stroke (stroke.id)}
                   <path
-                    d={smoothPath(stroke.points, boardWidth, boardHeight)}
+                    d={smoothPath(stroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
                     fill="none"
                     stroke="#9ca3af"
                     stroke-width={stroke.width}
@@ -298,7 +319,7 @@
               <path
                 bind:this={replayPaths[index]}
                 class="replay-path"
-                d={smoothPath(stroke.points, boardWidth, boardHeight)}
+                d={smoothPath(stroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
                 fill="none"
                 stroke={stroke.colour}
                 stroke-width={stroke.width}
@@ -317,12 +338,12 @@
             y={penY}
             rotation={penRotation}
             colour={animatedPenColour}
-            scale={Math.max(0.72, Math.min(1.05, boardWidth / 950))}
+            scale={1}
           />
         {/if}
         {#if currentStroke}
           <path
-            d={smoothPath(currentStroke.points, boardWidth, boardHeight)}
+            d={smoothPath(currentStroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
             fill="none"
             stroke={currentStroke.colour}
             stroke-width={currentStroke.width}
@@ -373,10 +394,6 @@
     --paper: #fffdf7;
     --zoom: 1;
     position: relative;
-    width: calc(100% / var(--zoom));
-    height: calc(100% / var(--zoom));
-    min-width: 100%;
-    min-height: 100%;
     transform: scale(var(--zoom));
     transform-origin: center;
     overflow: hidden;
