@@ -3,6 +3,7 @@
   import Dropzone from 'svelte-file-dropzone';
   import AnimatedPen from './AnimatedPen.svelte';
   import Icon from './Icon.svelte';
+  import TimerWidget from './TimerWidget.svelte';
   import { BACKGROUND_IMAGE_ACCEPT, MAX_BACKGROUND_FILE_SIZE } from '../lib/backgroundImage';
   import { BOARD_ASPECT_RATIO, BOARD_HEIGHT, BOARD_WIDTH } from '../lib/constants';
   import {
@@ -36,6 +37,7 @@
   export let guideSize: number;
   export let backgroundImage: BoardBackground | null;
   export let backgroundOpacity: number;
+  export let timer: { startedAt: number; durationMinutes: number } | null;
   export let onStrokeComplete: (stroke: BoardStroke) => void;
   export let onResize: (width: number, height: number) => void;
   export let onBackgroundSelected: (file: File) => void;
@@ -369,11 +371,15 @@
         {/if}
       </div>
     </div>
+    {#if timer}
+      <TimerWidget startedAt={timer.startedAt} durationMinutes={timer.durationMinutes} />
+    {/if}
   </div>
 </Dropzone>
 
 <style>
   .board-stage {
+    position: relative;
     min-width: 0;
     min-height: 0;
     display: grid;

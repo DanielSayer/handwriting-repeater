@@ -6,6 +6,7 @@
   import PageRail from './components/PageRail.svelte';
   import PlaybackBar from './components/PlaybackBar.svelte';
   import ToolRail from './components/ToolRail.svelte';
+  import TimerDialog from './components/TimerDialog.svelte';
   import { DEFAULT_BOARD_STATE } from './lib/constants';
   import { prepareBackgroundImage } from './lib/backgroundImage';
   import { downloadBoardPng } from './lib/exportBoard';
@@ -48,6 +49,8 @@
   let replayNonce = 0;
   let replayTimer: ReturnType<typeof setTimeout> | undefined;
   let guideDialogOpen = false;
+  let timerDialogOpen = false;
+  let timer: { startedAt: number; durationMinutes: number } | null = null;
 
   $: playbackRate = playbackRateForSpeed(speed);
   $: replayDuration = getReplayDuration(createReplaySchedule(strokes, playbackRate));
@@ -199,6 +202,20 @@
       /* Export is best-effort when browser canvas APIs are unavailable. */
     }
   }
+
+  function startTimer(durationMinutes: number): void {
+    timer = { startedAt: Date.now(), durationMinutes };
+    timerDialogOpen = false;
+  }
+
+  function cancelTimer(): void {
+    timer = null;
+  }
+
+  function handleTimerAction(): void {
+    if (timer) cancelTimer();
+    else timerDialogOpen = true;
+  }
 </script>
 
 <svelte:head>
@@ -217,9 +234,11 @@
       canUndo={strokes.length > 0}
       canRedo={redoStack.length > 0}
       canClear={strokes.length > 0 || Boolean(guideText)}
+      timerActive={timer !== null}
       onUndo={undo}
       onRedo={redo}
       onClear={clearBoard}
+      onTimerClick={handleTimerAction}
     />
 
     <section class="board-column" aria-label="Drawing workspace">
@@ -240,6 +259,7 @@
         {guideSize}
         {backgroundImage}
         {backgroundOpacity}
+        {timer}
         onStrokeComplete={addStroke}
         onResize={(width, height) => {
           boardWidth = width;
@@ -276,6 +296,10 @@
   />
 {/if}
 
+{#if timerDialogOpen}
+  <TimerDialog onClose={() => (timerDialogOpen = false)} onStart={startTimer} />
+{/if}
+
 <style>
   .app-shell {
     height: 100vh;
@@ -304,7 +328,6 @@
     grid-template-rows: minmax(0, 1fr) auto;
     gap: 12px;
   }
-
   @media (min-width: 1400px) {
     .workspace {
       grid-template-columns: 208px minmax(0, 1fr) 272px;

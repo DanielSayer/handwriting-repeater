@@ -14,6 +14,8 @@
     | 'stop'
     | 'fullscreen'
     | 'exit-fullscreen'
+    | 'clock'
+    | 'drag'
     | 'close';
   export let size = 18;
 </script>
@@ -75,6 +77,11 @@
   {:else if name === 'exit-fullscreen'}
     <path d="M8 19c4 0 7 0 11-1 0-4 0-7 1-11M28 8c1 4 1 7 1 11 4 0 7 0 11 1" />
     <path d="M8 29c4 0 7 0 11 1 0 4 0 7 1 11M28 40c1-4 1-7 1-11 4 0 7 0 11-1" />
+  {:else if name === 'clock'}
+    <path d="M24 7c10 0 17 7 17 17 0 11-7 17-17 17S7 34 7 24 14 7 24 7Z" />
+    <path d="M24 13c-1 5 0 9 0 12l8 5M12 24h2m20 0h2M24 35v2" />
+  {:else if name === 'drag'}
+    <path d="M17 13h.1M31 13h.1M17 24h.1M31 24h.1M17 35h.1M31 35h.1" stroke-width="5" />
   {:else if name === 'close'}
     <path d="M10 9c9 10 18 20 29 30M39 9C29 18 20 29 9 39" />
   {/if}

@@ -11,9 +11,11 @@
   export let canUndo: boolean;
   export let canRedo: boolean;
   export let canClear: boolean;
+  export let timerActive: boolean;
   export let onUndo: () => void;
   export let onRedo: () => void;
   export let onClear: () => void;
+  export let onTimerClick: () => void;
 </script>
 
 <aside class="tool-rail" aria-label="Drawing tools">
@@ -107,6 +109,20 @@
       title="Loop replay"
     >
       <Icon name="loop" /><span>Loop</span>
+    </button>
+  </div>
+
+  <div class="rail-section tools-section">
+    <span class="rail-heading">Tools</span>
+    <button
+      class="tool-button"
+      class:active={timerActive}
+      on:click={onTimerClick}
+      aria-label={timerActive ? 'Cancel timer' : 'Add a timer'}
+      aria-pressed={timerActive}
+      title={timerActive ? 'Cancel timer' : 'Add a timer'}
+    >
+      <Icon name="clock" /><span>{timerActive ? 'Cancel timer' : 'Timer'}</span>
     </button>
   </div>
 </aside>
@@ -233,7 +249,8 @@
   .mode-section .rail-heading {
     grid-column: 1 / -1;
   }
-  .mode-button {
+  .mode-button,
+  .tool-button {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -247,7 +264,8 @@
     cursor: pointer;
     color: var(--ink);
   }
-  .mode-button:hover {
+  .mode-button:hover,
+  .tool-button:hover {
     border-color: var(--ink);
     transform: rotate(-0.5deg);
   }
@@ -256,6 +274,14 @@
     border-color: var(--ink);
     color: #fff;
     transform: rotate(-0.7deg);
+  }
+  .tools-section {
+    display: grid;
+  }
+  .tool-button.active {
+    border-color: #d8b2a8;
+    background: #fff8f4;
+    color: #b0492f;
   }
 
   @media (min-width: 1400px) {
@@ -287,7 +313,8 @@
     .mode-section {
       gap: 9px;
     }
-    .mode-button {
+    .mode-button,
+    .tool-button {
       gap: 10px;
       min-height: 44px;
       padding: 10px 12px;
@@ -310,14 +337,19 @@
     .mode-section {
       grid-template-columns: 1fr 1fr;
     }
+    .tools-section {
+      align-content: end;
+    }
     .edit-section {
       grid-column: 1 / -1;
     }
-    .mode-button {
+    .mode-button,
+    .tool-button {
       justify-content: center;
       padding: 8px 5px;
     }
-    .mode-button span {
+    .mode-button span,
+    .tool-button span {
       display: none;
     }
   }
