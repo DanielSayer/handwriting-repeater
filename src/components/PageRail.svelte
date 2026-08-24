@@ -10,6 +10,8 @@
   export let backgroundOpacity: number;
   export let backgroundLoading: boolean;
   export let backgroundError: string;
+  export let exporting: boolean;
+  export let exportError: string;
   export let onOpenGuide: () => void;
   export let onExport: () => void;
   export let onBackgroundSelected: (file: File) => void;
@@ -121,10 +123,22 @@
     {/if}
   </div>
 
-  <button class="page-tool export-tool" on:click={onExport}>
+  <button
+    class="page-tool export-tool"
+    on:click={onExport}
+    disabled={exporting}
+    aria-busy={exporting}
+  >
     <span class="tool-icon"><Icon name="download" /></span>
-    <span><strong>Save board</strong><small>Download a PNG</small></span>
+    <span
+      ><strong>{exporting ? 'Making GIF…' : 'Save replay'}</strong><small
+        >Download a one-loop GIF</small
+      ></span
+    >
   </button>
+  {#if exportError}
+    <p class="export-error" role="status">{exportError}</p>
+  {/if}
 </aside>
 
 <style>
@@ -369,6 +383,15 @@
   .export-tool {
     margin-top: 20px;
   }
+  .export-tool:disabled {
+    cursor: wait;
+    opacity: 0.65;
+  }
+  .export-error {
+    margin: 8px 2px 0;
+    color: #b0492f;
+    font-size: 10px;
+  }
 
   @media (min-width: 1400px) {
     .page-rail {
@@ -430,7 +453,8 @@
     .background-name,
     .background-buttons button,
     .fade-control,
-    .background-error {
+    .background-error,
+    .export-error {
       font-size: 11px;
     }
     .background-buttons button {

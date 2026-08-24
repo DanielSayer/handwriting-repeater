@@ -60,4 +60,6 @@ export interface ExportBoardOptions {
   guideText: string;
   repeatCount: number;
   guideSize: number;
+  playbackRate: number;
+  traceMode: boolean;
 }

@@ -9,7 +9,7 @@
   import TimerDialog from './components/TimerDialog.svelte';
   import { DEFAULT_BOARD_STATE } from './lib/constants';
   import { prepareBackgroundImage } from './lib/backgroundImage';
-  import { downloadBoardPng } from './lib/exportBoard';
+  import { downloadBoardGif } from './lib/exportBoard';
   import {
     createReplaySchedule,
     playbackRateForSpeed,
@@ -51,6 +51,8 @@
   let guideDialogOpen = false;
   let timerDialogOpen = false;
   let timer: { startedAt: number; durationMinutes: number } | null = null;
+  let exporting = false;
+  let exportError = '';
 
   $: playbackRate = playbackRateForSpeed(speed);
   $: replayDuration = getReplayDuration(createReplaySchedule(strokes, playbackRate));
@@ -185,8 +187,12 @@
   }
 
   async function exportBoard(): Promise<void> {
+    if (exporting) return;
+    exporting = true;
+    exportError = '';
+
     try {
-      await downloadBoardPng({
+      await downloadBoardGif({
         strokes,
         backgroundImage,
         backgroundOpacity,
@@ -196,10 +202,14 @@
         lineStyle,
         guideText,
         repeatCount,
-        guideSize
+        guideSize,
+        playbackRate,
+        traceMode
       });
     } catch {
-      /* Export is best-effort when browser canvas APIs are unavailable. */
+      exportError = 'The GIF could not be created. Try again with a shorter replay.';
+    } finally {
+      exporting = false;
     }
   }
 
@@ -278,6 +288,8 @@
       {backgroundImage}
       {backgroundLoading}
       {backgroundError}
+      {exporting}
+      {exportError}
       onOpenGuide={() => (guideDialogOpen = true)}
       onExport={exportBoard}
       onBackgroundSelected={(file) => void setBackground(file)}
