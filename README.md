@@ -4,7 +4,7 @@
 
 A private, browser-local handwriting whiteboard. Draw naturally, add practice guides, trace an image, replay strokes at their original pace, and export the finished board as a PNG.
 
-[Open Repeat](https://handwriting-repeater.vercel.app)
+[Open Repeat](https://www.handwriting-repeater.com/)
 
 ## Features
 
