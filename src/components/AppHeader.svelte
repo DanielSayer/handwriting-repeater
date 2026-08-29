@@ -40,7 +40,7 @@
   </div>
   <div class="brand-copy">
     <h1>Repeat</h1>
-    <p>handwriting whiteboard</p>
+    <p>practise, trace, replay and export handwriting</p>
   </div>
   <button
     class="fullscreen-button"

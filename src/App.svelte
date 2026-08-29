@@ -229,7 +229,7 @@
 </script>
 
 <svelte:head>
-  <title>Repeat — handwriting whiteboard</title>
+  <title>Repeat: Handwriting Practice and Replay Tool</title>
 </svelte:head>
 
 <div class="app-shell">
