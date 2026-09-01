@@ -262,7 +262,7 @@
   role="presentation"
   tabindex="-1"
 >
-  <div class="board-stage" bind:this={boardStage}>
+  <div class="board-stage ph-no-capture" bind:this={boardStage}>
     <div
       class="board-viewport"
       class:trace-active={traceMode}

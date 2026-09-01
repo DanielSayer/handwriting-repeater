@@ -21,7 +21,12 @@
 </script>
 
 <div class="modal-backdrop">
-  <div class="text-panel" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+  <div
+    class="text-panel ph-no-capture"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="guide-title"
+  >
     <div class="panel-header">
       <h2 id="guide-title">Type something to practise</h2>
       <button on:click={onClose} aria-label="Close text panel"

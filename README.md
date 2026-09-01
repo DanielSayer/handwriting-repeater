@@ -17,7 +17,7 @@ A private, browser-local handwriting whiteboard. Draw naturally, add practice gu
 - Responsive layouts for desktop, tablet, and mobile
 - Branded large-card previews when a deployed link is shared
 
-Repeat has no backend. Board content and imported images stay in the browser's local storage unless the user exports a PNG.
+Repeat has no backend. Board content and imported images stay in the browser's local storage unless the user exports a GIF. Optional PostHog analytics records anonymous feature use, but never guide text, handwriting paths, filenames, or imported images. Session replay is disabled.
 
 ## Local development
 
@@ -32,6 +32,8 @@ pnpm dev
 ```
 
 Vite prints the local address when the development server starts.
+
+PostHog is optional. Copy `.env.example` to `.env.local` and set `VITE_PUBLIC_POSTHOG_KEY` to enable analytics. `VITE_PUBLIC_POSTHOG_HOST` defaults to the US PostHog Cloud host. Local development logs a configuration error when the key is absent, but the app still starts.
 
 ## Quality checks
 
@@ -60,13 +62,15 @@ Use `dist` as the publish directory. No environment variables, server functions,
 
 Recommended deployment settings:
 
-| Setting           | Value                            |
-| ----------------- | -------------------------------- |
-| Node.js           | 22.12 or newer                   |
-| Package manager   | pnpm 9.5                         |
-| Install command   | `pnpm install --frozen-lockfile` |
-| Build command     | `pnpm build`                     |
-| Publish directory | `dist`                           |
+| Setting                    | Value                                   |
+| -------------------------- | --------------------------------------- |
+| Node.js                    | 22.12 or newer                          |
+| Package manager            | pnpm 9.5                                |
+| Install command            | `pnpm install --frozen-lockfile`        |
+| Build command              | `pnpm build`                            |
+| Publish directory          | `dist`                                  |
+| `VITE_PUBLIC_POSTHOG_KEY`  | Optional PostHog project token          |
+| `VITE_PUBLIC_POSTHOG_HOST` | Optional, defaults to the US Cloud host |
 
 ## Project structure
 
@@ -82,3 +86,5 @@ public/          # Icons, web app manifest, and crawler policy
 ## Privacy and storage
 
 Saved boards use the browser's local storage. Clearing site data removes them, and storage is not shared across browsers or devices. Large tracing images are resized before storage, but a browser may still reject a board if its site-storage quota is exhausted.
+
+When configured, PostHog autocaptures page views and ordinary controls. Custom events cover drawing starts, replay, guides, background imports, GIF exports, timers, and failures. The drawing surface and guide editor are excluded from autocapture. The app creates anonymous IDs only and disables person profiles and session replay.

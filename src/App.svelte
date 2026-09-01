@@ -7,6 +7,7 @@
   import PlaybackBar from './components/PlaybackBar.svelte';
   import ToolRail from './components/ToolRail.svelte';
   import TimerDialog from './components/TimerDialog.svelte';
+  import { captureEvent, captureException } from './lib/analytics';
   import { DEFAULT_BOARD_STATE } from './lib/constants';
   import { prepareBackgroundImage } from './lib/backgroundImage';
   import { downloadBoardGif } from './lib/exportBoard';
@@ -111,6 +112,13 @@
   }
 
   function addStroke(stroke: BoardStroke): void {
+    if (!strokes.length) {
+      captureEvent('drawing_started', {
+        pen_type: penType,
+        has_background: backgroundImage !== null,
+        has_guide: Boolean(guideText)
+      });
+    }
     strokes = [...strokes, stroke];
     redoStack = [];
   }
@@ -142,7 +150,7 @@
     replaying = false;
   }
 
-  async function replay(): Promise<void> {
+  async function replay(automaticLoop = false): Promise<void> {
     if (!strokes.length) {
       return;
     }
@@ -151,21 +159,44 @@
     await tick();
     replayNonce += 1;
     replaying = true;
+    if (!automaticLoop) {
+      captureEvent('replay_started', {
+        stroke_count: strokes.length,
+        duration_seconds: replayDuration,
+        playback_rate: playbackRate,
+        loop_enabled: loopMode,
+        trace_enabled: traceMode
+      });
+    }
 
     replayTimer = setTimeout(
       () => {
         replaying = false;
-        if (loopMode) void replay();
+        if (loopMode) void replay(true);
       },
       replayDuration * 1000 + 80
     );
   }
 
   function placeGuide(text: string, rows: number, size: number): void {
+    const hadGuide = Boolean(guideText);
     guideText = text;
     repeatCount = Math.max(1, Math.min(8, rows));
     guideSize = size;
     guideDialogOpen = false;
+    if (text) {
+      captureEvent('guide_placed', {
+        repeat_count: repeatCount,
+        guide_size: guideSize
+      });
+    } else if (hadGuide) {
+      captureEvent('guide_removed', {});
+    }
+  }
+
+  function reportBackgroundSelectionError(message: string): void {
+    backgroundError = message;
+    captureEvent('background_add_failed', { file_type: 'rejected' });
   }
 
   async function setBackground(file: File): Promise<void> {
@@ -174,8 +205,11 @@
 
     try {
       backgroundImage = await prepareBackgroundImage(file);
+      captureEvent('background_added', { file_type: file.type });
     } catch (error) {
       backgroundError = error instanceof Error ? error.message : 'That image could not be added.';
+      captureEvent('background_add_failed', { file_type: file.type });
+      captureException(error, 'background_add');
     } finally {
       backgroundLoading = false;
     }
@@ -206,8 +240,21 @@
         playbackRate,
         traceMode
       });
-    } catch {
+      captureEvent('gif_exported', {
+        stroke_count: strokes.length,
+        line_style: lineStyle,
+        has_background: backgroundImage !== null,
+        has_guide: Boolean(guideText),
+        trace_enabled: traceMode,
+        playback_rate: playbackRate
+      });
+    } catch (error) {
       exportError = 'The GIF could not be created. Try again with a shorter replay.';
+      captureEvent('gif_export_failed', {
+        stroke_count: strokes.length,
+        has_background: backgroundImage !== null
+      });
+      captureException(error, 'gif_export');
     } finally {
       exporting = false;
     }
@@ -216,6 +263,7 @@
   function startTimer(durationMinutes: number): void {
     timer = { startedAt: Date.now(), durationMinutes };
     timerDialogOpen = false;
+    captureEvent('timer_started', { duration_minutes: durationMinutes });
   }
 
   function cancelTimer(): void {
@@ -276,7 +324,7 @@
           boardHeight = height;
         }}
         onBackgroundSelected={(file) => void setBackground(file)}
-        onBackgroundError={(message) => (backgroundError = message)}
+        onBackgroundError={reportBackgroundSelectionError}
       />
       <PlaybackBar bind:zoom bind:speed {replaying} onReplay={replay} onStop={stopReplay} />
     </section>
