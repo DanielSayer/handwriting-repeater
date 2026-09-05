@@ -17,7 +17,7 @@ export function getTimerSnapshot(
 
   return {
     remainingMs,
-    remainingMinutes: Math.round(remainingMs / TIMER_MINUTE_MS),
+    remainingMinutes: Math.ceil(remainingMs / TIMER_MINUTE_MS),
     progress: durationMs === 0 ? 0 : remainingMs / durationMs
   };
 }

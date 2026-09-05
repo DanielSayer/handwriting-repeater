@@ -17,9 +17,13 @@ describe('getTimerSnapshot', () => {
     expect(snapshot.progress).toBe(0.5);
   });
 
-  it('shows the remaining time to the nearest minute', () => {
-    expect(getTimerSnapshot(0, 5, 31_000).remainingMinutes).toBe(4);
-    expect(getTimerSnapshot(0, 5, 29_000).remainingMinutes).toBe(5);
+  it('always rounds positive remaining time up to the next minute', () => {
+    expect(getTimerSnapshot(0, 5, 31_000).remainingMinutes).toBe(5);
+    expect(getTimerSnapshot(0, 5, 4 * TIMER_MINUTE_MS + 59_000).remainingMinutes).toBe(1);
+  });
+
+  it('shows zero minutes once no time remains', () => {
+    expect(getTimerSnapshot(0, 5, 5 * TIMER_MINUTE_MS).remainingMinutes).toBe(0);
   });
 
   it('stops at zero after the timer finishes', () => {
