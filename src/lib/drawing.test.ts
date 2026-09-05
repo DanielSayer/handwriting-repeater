@@ -3,23 +3,23 @@ import { createGuideRows, fitBoardToViewport, smoothPath } from './drawing';
 
 describe('fitBoardToViewport', () => {
   it('preserves the board aspect ratio when the viewport gets wider', () => {
-    expect(fitBoardToViewport(1200, 560, 1, 12 / 7)).toEqual({
+    expect(fitBoardToViewport(1200, 560, 12 / 7)).toEqual({
       width: 960,
       height: 560
     });
   });
 
   it('preserves the board aspect ratio when the viewport gets taller', () => {
-    expect(fitBoardToViewport(960, 800, 1, 12 / 7)).toEqual({
+    expect(fitBoardToViewport(960, 800, 12 / 7)).toEqual({
       width: 960,
       height: 560
     });
   });
 
-  it('accounts for CSS zoom without changing the displayed board size', () => {
-    expect(fitBoardToViewport(960, 560, 1.25, 12 / 7)).toEqual({
-      width: 768,
-      height: 448
+  it('fits a narrow mobile viewport', () => {
+    expect(fitBoardToViewport(360, 560, 12 / 7)).toEqual({
+      width: 360,
+      height: 210
     });
   });
 });
@@ -56,5 +56,9 @@ describe('createGuideRows', () => {
   it('rounds and clamps the requested row count', () => {
     expect(createGuideRows('abc', 20)).toHaveLength(8);
     expect(createGuideRows('abc', 1.4)).toEqual([{ id: 0, text: 'abc', topPercent: 18 }]);
+  });
+  it('recovers from a cleared or non-finite row input', () => {
+    expect(createGuideRows('abc', Number.NaN)).toHaveLength(1);
+    expect(createGuideRows('abc', Infinity)).toHaveLength(1);
   });
 });

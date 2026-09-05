@@ -3,16 +3,14 @@ import type { GuideRow, Point } from './types';
 export function fitBoardToViewport(
   viewportWidth: number,
   viewportHeight: number,
-  zoom: number,
   aspectRatio: number
 ): { width: number; height: number } {
-  const safeZoom = Math.max(zoom, 0.01);
   const displayWidth = Math.min(viewportWidth, viewportHeight * aspectRatio);
   const displayHeight = displayWidth / aspectRatio;
 
   return {
-    width: displayWidth / safeZoom,
-    height: displayHeight / safeZoom
+    width: displayWidth,
+    height: displayHeight
   };
 }
 
@@ -43,7 +41,7 @@ export function smoothPath(points: Point[], width: number, height: number): stri
 
 export function createGuideRows(text: string, count: number): GuideRow[] {
   if (!text) return [];
-  const safeCount = clamp(Math.round(count), 1, 8);
+  const safeCount = Number.isFinite(count) ? clamp(Math.round(count), 1, 8) : 1;
   return Array.from({ length: safeCount }, (_, index) => ({
     id: index,
     text,

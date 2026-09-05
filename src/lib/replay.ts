@@ -1,3 +1,4 @@
+import { segmentAt, strokeGeometry } from './strokeGeometry';
 import type { BoardStroke } from './types';
 
 export interface StrokeReplayTiming {
@@ -18,7 +19,7 @@ export function createReplaySchedule(
 ): StrokeReplayTiming[] {
   if (strokes.length === 0) return [];
 
-  const safePlaybackRate = Math.max(0.1, playbackRate);
+  const safePlaybackRate = Number.isFinite(playbackRate) ? Math.max(0.1, playbackRate) : 1;
   const legacyStrokeLengths = strokes.map((stroke) =>
     hasRecordedTiming(stroke) ? 0 : strokeLength(stroke)
   );
@@ -61,65 +62,34 @@ export function strokeReplayProgress(
 
   const recordedDurationMs = stroke.points.at(-1)!.elapsedMs!;
   const targetElapsedMs = linearProgress * recordedDurationMs;
-  const distances = cumulativeDistances(stroke);
+  const distances = strokeGeometry(stroke.points).distances;
   const totalDistance = distances.at(-1) ?? 0;
   if (totalDistance <= 0) return linearProgress;
 
-  for (let index = 1; index < stroke.points.length; index += 1) {
-    const currentElapsedMs = stroke.points[index].elapsedMs!;
-    if (targetElapsedMs > currentElapsedMs) continue;
+  const index = segmentAt(
+    stroke.points.length,
+    (index) => stroke.points[index].elapsedMs!,
+    targetElapsedMs
+  );
+  const currentElapsedMs = stroke.points[index].elapsedMs!;
 
-    const previousElapsedMs = stroke.points[index - 1].elapsedMs!;
-    const segmentDurationMs = currentElapsedMs - previousElapsedMs;
-    const segmentProgress =
-      segmentDurationMs > 0
-        ? clamp((targetElapsedMs - previousElapsedMs) / segmentDurationMs, 0, 1)
-        : 1;
-    const distance =
-      distances[index - 1] + (distances[index] - distances[index - 1]) * segmentProgress;
-    return distance / totalDistance;
-  }
-
-  return 1;
+  const previousElapsedMs = stroke.points[index - 1].elapsedMs!;
+  const segmentDurationMs = currentElapsedMs - previousElapsedMs;
+  const segmentProgress =
+    segmentDurationMs > 0
+      ? clamp((targetElapsedMs - previousElapsedMs) / segmentDurationMs, 0, 1)
+      : 1;
+  const distance =
+    distances[index - 1] + (distances[index] - distances[index - 1]) * segmentProgress;
+  return distance / totalDistance;
 }
 
 function hasRecordedTiming(stroke: BoardStroke): boolean {
-  if (stroke.points.length < 2) return false;
-
-  let previousElapsedMs = -1;
-  for (const point of stroke.points) {
-    if (
-      typeof point.elapsedMs !== 'number' ||
-      !Number.isFinite(point.elapsedMs) ||
-      point.elapsedMs < previousElapsedMs
-    )
-      return false;
-    previousElapsedMs = point.elapsedMs;
-  }
-
-  return previousElapsedMs > 0;
-}
-
-function cumulativeDistances(stroke: BoardStroke): number[] {
-  const distances = [0];
-  for (let index = 1; index < stroke.points.length; index += 1) {
-    const previous = stroke.points[index - 1];
-    const current = stroke.points[index];
-    distances.push(
-      distances[index - 1] + Math.hypot(current.x - previous.x, current.y - previous.y)
-    );
-  }
-  return distances;
+  return strokeGeometry(stroke.points).recorded;
 }
 
 function strokeLength(stroke: BoardStroke): number {
-  let length = 0;
-  for (let index = 1; index < stroke.points.length; index += 1) {
-    const previous = stroke.points[index - 1];
-    const current = stroke.points[index];
-    length += Math.hypot(current.x - previous.x, current.y - previous.y);
-  }
-  return Math.max(0.01, length);
+  return Math.max(0.01, strokeGeometry(stroke.points).length);
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {

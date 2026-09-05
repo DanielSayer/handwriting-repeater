@@ -1,7 +1,11 @@
+import { segmentAt, strokeGeometry } from './strokeGeometry';
 import { GIFEncoder, applyPalette, quantize } from 'gifenc';
 import { createGuideRows } from './drawing';
 import { createReplaySchedule, replayDuration, strokeReplayProgress } from './replay';
 import type { BoardStroke, ExportBoardOptions, LineStyle, Point } from './types';
+
+type DrawingCanvas = HTMLCanvasElement | OffscreenCanvas;
+type DrawingContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
 const EXPORT_WIDTH = 960;
 const TARGET_FRAME_DELAY_MS = 80;
@@ -13,7 +17,7 @@ export interface GifFrame {
   delayMs: number;
 }
 
-export async function downloadBoardGif(options: ExportBoardOptions): Promise<void> {
+export async function encodeBoardGif(options: ExportBoardOptions): Promise<Blob> {
   const width = EXPORT_WIDTH;
   const height = Math.round(width * (options.boardHeight / options.boardWidth));
   const canvas = createCanvas(width, height);
@@ -43,11 +47,11 @@ export async function downloadBoardGif(options: ExportBoardOptions): Promise<voi
       repeat: -1
     });
 
-    if (index % 4 === 3) await yieldToBrowser();
+    await yieldToBrowser();
   }
 
   gif.finish();
-  downloadBlob(new Blob([gif.bytes()], { type: 'image/gif' }), 'my-handwriting.gif');
+  return new Blob([gif.bytes()], { type: 'image/gif' });
 }
 
 export function createGifFramePlan(durationSeconds: number): GifFrame[] {
@@ -75,43 +79,32 @@ export function partialStrokePoints(stroke: BoardStroke, progress: number): Poin
   if (stroke.points.length < 2 || progress <= 0) return [];
   if (progress >= 1) return stroke.points;
 
-  const distances = [0];
-  for (let index = 1; index < stroke.points.length; index += 1) {
-    const previous = stroke.points[index - 1];
-    const current = stroke.points[index];
-    distances.push(
-      distances[index - 1] + Math.hypot(current.x - previous.x, current.y - previous.y)
-    );
-  }
+  const distances = strokeGeometry(stroke.points).distances;
 
   const totalDistance = distances.at(-1) ?? 0;
   if (totalDistance <= 0) return stroke.points.slice(0, 2);
   const targetDistance = totalDistance * progress;
 
-  for (let index = 1; index < stroke.points.length; index += 1) {
-    if (distances[index] < targetDistance) continue;
+  const index = segmentAt(distances.length, (index) => distances[index], targetDistance);
 
-    const previous = stroke.points[index - 1];
-    const current = stroke.points[index];
-    const segmentDistance = distances[index] - distances[index - 1];
-    const segmentProgress =
-      segmentDistance > 0 ? (targetDistance - distances[index - 1]) / segmentDistance : 1;
+  const previous = stroke.points[index - 1];
+  const current = stroke.points[index];
+  const segmentDistance = distances[index] - distances[index - 1];
+  const segmentProgress =
+    segmentDistance > 0 ? (targetDistance - distances[index - 1]) / segmentDistance : 1;
 
-    return [
-      ...stroke.points.slice(0, index),
-      {
-        x: previous.x + (current.x - previous.x) * segmentProgress,
-        y: previous.y + (current.y - previous.y) * segmentProgress
-      }
-    ];
-  }
-
-  return stroke.points;
+  return [
+    ...stroke.points.slice(0, index),
+    {
+      x: previous.x + (current.x - previous.x) * segmentProgress,
+      y: previous.y + (current.y - previous.y) * segmentProgress
+    }
+  ];
 }
 
 function renderFrame(
-  context: CanvasRenderingContext2D,
-  baseCanvas: HTMLCanvasElement,
+  context: DrawingContext,
+  baseCanvas: DrawingCanvas,
   width: number,
   height: number,
   options: ExportBoardOptions,
@@ -164,21 +157,22 @@ function includeAnimationColours(palette: number[][]): number[][] {
   ];
 }
 
-function createCanvas(width: number, height: number): HTMLCanvasElement {
+function createCanvas(width: number, height: number): DrawingCanvas {
+  if (typeof document === 'undefined') return new OffscreenCanvas(width, height);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   return canvas;
 }
 
-function getCanvasContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const context = canvas.getContext('2d');
+function getCanvasContext(canvas: DrawingCanvas): DrawingContext {
+  const context = canvas.getContext('2d', { willReadFrequently: true }) as DrawingContext | null;
   if (!context) throw new Error('GIF export is not supported by this browser.');
   return context;
 }
 
 async function drawBackgroundImage(
-  context: CanvasRenderingContext2D,
+  context: DrawingContext,
   width: number,
   height: number,
   options: ExportBoardOptions
@@ -186,9 +180,11 @@ async function drawBackgroundImage(
   if (!options.backgroundImage) return;
 
   const image = await loadImage(options.backgroundImage.src);
-  const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
-  const imageWidth = image.naturalWidth * scale;
-  const imageHeight = image.naturalHeight * scale;
+  const naturalWidth = 'naturalWidth' in image ? image.naturalWidth : image.width;
+  const naturalHeight = 'naturalHeight' in image ? image.naturalHeight : image.height;
+  const scale = Math.min(width / naturalWidth, height / naturalHeight);
+  const imageWidth = naturalWidth * scale;
+  const imageHeight = naturalHeight * scale;
 
   context.save();
   context.globalAlpha = options.backgroundOpacity;
@@ -200,9 +196,14 @@ async function drawBackgroundImage(
     imageHeight
   );
   context.restore();
+  if ('close' in image) image.close();
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+async function loadImage(src: string): Promise<HTMLImageElement | ImageBitmap> {
+  if (typeof document === 'undefined') {
+    const response = await fetch(src);
+    return createImageBitmap(await response.blob());
+  }
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
@@ -212,7 +213,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 function drawBackground(
-  context: CanvasRenderingContext2D,
+  context: DrawingContext,
   width: number,
   height: number,
   pageColour: string,
@@ -266,7 +267,7 @@ function drawBackground(
 }
 
 function drawGuide(
-  context: CanvasRenderingContext2D,
+  context: DrawingContext,
   width: number,
   height: number,
   options: ExportBoardOptions
@@ -277,6 +278,8 @@ function drawGuide(
   context.fillStyle = options.traceMode ? '#8f9aa6' : '#a7b0b8';
   context.globalAlpha = options.traceMode ? 0.78 : 0.62;
   context.font = `${Math.round(options.guideSize * (width / options.boardWidth))}px "Comic Sans MS", cursive`;
+  context.textBaseline = 'middle';
+  context.letterSpacing = `${options.guideSize * (width / options.boardWidth) * 0.05}px`;
   for (const row of createGuideRows(options.guideText, options.repeatCount)) {
     context.fillText(row.text, width * 0.07, (row.topPercent / 100) * height);
   }
@@ -284,7 +287,7 @@ function drawGuide(
 }
 
 function drawStroke(
-  context: CanvasRenderingContext2D,
+  context: DrawingContext,
   width: number,
   height: number,
   options: ExportBoardOptions,
@@ -336,7 +339,7 @@ function findActiveStroke(
 }
 
 function drawAnimatedPen(
-  context: CanvasRenderingContext2D,
+  context: DrawingContext,
   width: number,
   height: number,
   options: ExportBoardOptions,
@@ -446,7 +449,7 @@ function pointAtProgress(
 }
 
 function drawPolygon(
-  context: CanvasRenderingContext2D,
+  context: DrawingContext,
   points: [number, number][],
   fill: string,
   stroke: string,
@@ -463,7 +466,7 @@ function drawPolygon(
   context.stroke();
 }
 
-function drawRoundedCap(context: CanvasRenderingContext2D): void {
+function drawRoundedCap(context: DrawingContext): void {
   context.beginPath();
   context.moveTo(61, -10);
   context.lineTo(76, -10);
@@ -479,17 +482,6 @@ function drawRoundedCap(context: CanvasRenderingContext2D): void {
   context.stroke();
 }
 
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.download = filename;
-  link.href = url;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
 function yieldToBrowser(): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, 0));
+  return new Promise((resolve) => globalThis.setTimeout(resolve, 0));
 }

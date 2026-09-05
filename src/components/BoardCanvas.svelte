@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import Dropzone from 'svelte-file-dropzone';
-  import AnimatedPen from './AnimatedPen.svelte';
+  import StrokeLayer from './StrokeLayer.svelte';
   import Icon from './Icon.svelte';
   import TimerWidget from './TimerWidget.svelte';
   import { BACKGROUND_IMAGE_ACCEPT, MAX_BACKGROUND_FILE_SIZE } from '../lib/backgroundImage';
@@ -12,9 +12,7 @@
     pointFromPointer,
     smoothPath
   } from '../lib/drawing';
-  import { createReplaySchedule, strokeReplayProgress } from '../lib/replay';
-  import type { StrokeReplayTiming } from '../lib/replay';
-  import type { BoardBackground, BoardStroke, LineStyle, PenType } from '../lib/types';
+  import type { BoardBackground, BoardStroke, LineStyle, PenType, Point } from '../lib/types';
 
   interface BackgroundDropDetail {
     acceptedFiles: File[];
@@ -50,21 +48,15 @@
   let currentStroke: BoardStroke | null = null;
   let currentStrokeStartedAt = 0;
   let drawing = false;
-  let replayPaths: SVGPathElement[] = [];
-  let penAnimationFrame: number | undefined;
-  let penVisible = false;
-  let penX = 0;
-  let penY = 0;
-  let penRotation = -55;
-  let animatedPenColour = penColour;
+  let activePointer: number | null = null;
+  let pendingPoints: Point[] = [];
+  let strokeFrame: number | undefined;
   let backgroundDragActive = false;
   let resizeAnimationFrame: number | undefined;
 
   $: guideRows = createGuideRows(guideText, repeatCount);
-  $: replaySchedule = createReplaySchedule(strokes, playbackRate);
-  $: paperSize = fitBoardToViewport(viewportWidth, viewportHeight, zoom, BOARD_ASPECT_RATIO);
-  $: if (replaying) void startPenAnimation(replayNonce);
-  $: if (!replaying) stopPenAnimation();
+  $: paperSize = fitBoardToViewport(viewportWidth, viewportHeight, BOARD_ASPECT_RATIO);
+  $: if (replaying) cancelStroke();
 
   onMount(() => {
     const measureViewport = (): void => {
@@ -88,87 +80,14 @@
       window.removeEventListener('resize', measureOnNextFrame);
       document.removeEventListener('fullscreenchange', measureOnNextFrame);
       if (resizeAnimationFrame !== undefined) cancelAnimationFrame(resizeAnimationFrame);
-      stopPenAnimation();
+      cancelStroke();
     };
   });
 
-  async function startPenAnimation(nonce: number): Promise<void> {
-    stopPenAnimation();
-    await tick();
-    if (!replaying || nonce !== replayNonce) return;
-
-    const startedAt = performance.now();
-    const frame = (timestamp: number): void => {
-      const elapsedSeconds = (timestamp - startedAt) / 1000;
-      const activeIndex = findActiveStroke(elapsedSeconds);
-
-      updateReplayPaths(elapsedSeconds);
-      if (activeIndex >= 0) updatePenPosition(activeIndex, elapsedSeconds);
-      else penVisible = false;
-
-      penAnimationFrame = requestAnimationFrame(frame);
-    };
-    penAnimationFrame = requestAnimationFrame(frame);
-  }
-
-  function stopPenAnimation(): void {
-    if (penAnimationFrame !== undefined) cancelAnimationFrame(penAnimationFrame);
-    penAnimationFrame = undefined;
-    penVisible = false;
-  }
-
-  function findActiveStroke(elapsedSeconds: number): number {
-    for (let index = strokes.length - 1; index >= 0; index -= 1) {
-      const timing = timingFor(index);
-      if (
-        elapsedSeconds >= timing.delaySeconds &&
-        elapsedSeconds <= timing.delaySeconds + timing.durationSeconds
-      )
-        return index;
-    }
-    return -1;
-  }
-
-  function updatePenPosition(index: number, elapsedSeconds: number): void {
-    const path = replayPaths[index];
-    const stroke = strokes[index];
-    if (!path || !stroke) return;
-
-    const timing = timingFor(index);
-    const progress = strokeReplayProgress(stroke, timing, elapsedSeconds);
-    const length = path.getTotalLength();
-    const distance = length * progress;
-    const point = path.getPointAtLength(distance);
-    const nearbyPoint = path.getPointAtLength(
-      Math.min(length, distance + Math.max(1, length * 0.01))
-    );
-    const tangentAngle =
-      Math.atan2(nearbyPoint.y - point.y, nearbyPoint.x - point.x) * (180 / Math.PI);
-
-    penX = point.x;
-    penY = point.y;
-    penRotation = -55 + Math.max(-45, Math.min(45, tangentAngle)) * 0.18;
-    animatedPenColour = stroke.colour;
-    penVisible = true;
-  }
-
-  function updateReplayPaths(elapsedSeconds: number): void {
-    replayPaths.forEach((path, index) => {
-      const stroke = strokes[index];
-      if (!path || !stroke) return;
-      path.style.strokeDashoffset = String(
-        1 - strokeReplayProgress(stroke, timingFor(index), elapsedSeconds)
-      );
-    });
-  }
-
-  function timingFor(index: number): StrokeReplayTiming {
-    return replaySchedule[index] ?? { delaySeconds: 0, durationSeconds: 0.04 };
-  }
-
   function startStroke(event: PointerEvent): void {
     svg.focus({ preventScroll: true });
-    if (event.button !== 0 || replaying) return;
+    if (event.button !== 0 || replaying || activePointer !== null) return;
+    activePointer = event.pointerId;
     svg.setPointerCapture(event.pointerId);
     drawing = true;
     currentStrokeStartedAt = event.timeStamp;
@@ -182,23 +101,46 @@
   }
 
   function moveStroke(event: PointerEvent): void {
-    if (!drawing || !currentStroke) return;
+    if (!drawing || !currentStroke || event.pointerId !== activePointer) return;
     const coalescedEvents = event.getCoalescedEvents?.();
     const pointerEvents = coalescedEvents?.length ? coalescedEvents : [event];
-    currentStroke = {
-      ...currentStroke,
-      points: [
-        ...currentStroke.points,
-        ...pointerEvents.map((pointerEvent) => ({
-          ...pointFromPointer(pointerEvent, svg),
-          elapsedMs: Math.max(0, pointerEvent.timeStamp - currentStrokeStartedAt)
-        }))
-      ]
-    };
+    pendingPoints.push(
+      ...pointerEvents.map((pointerEvent) => ({
+        ...pointFromPointer(pointerEvent, svg),
+        elapsedMs: Math.max(0, pointerEvent.timeStamp - currentStrokeStartedAt)
+      }))
+    );
+    strokeFrame ??= requestAnimationFrame(flushStroke);
+  }
+
+  function flushStroke(): void {
+    if (strokeFrame !== undefined) cancelAnimationFrame(strokeFrame);
+    strokeFrame = undefined;
+    if (currentStroke && pendingPoints.length) {
+      currentStroke = { ...currentStroke, points: [...currentStroke.points, ...pendingPoints] };
+    }
+    pendingPoints = [];
+  }
+
+  function cancelStroke(): void {
+    if (strokeFrame !== undefined) cancelAnimationFrame(strokeFrame);
+    strokeFrame = undefined;
+    pendingPoints = [];
+    currentStroke = null;
+    drawing = false;
+    const pointer = activePointer;
+    activePointer = null;
+    if (pointer !== null && svg?.hasPointerCapture(pointer)) svg.releasePointerCapture(pointer);
+  }
+
+  function handlePointerCancel(event: PointerEvent): void {
+    if (event.pointerId === activePointer) cancelStroke();
   }
 
   function endStroke(event: PointerEvent): void {
-    if (!drawing || !currentStroke) return;
+    if (!drawing || !currentStroke || event.pointerId !== activePointer) return;
+    flushStroke();
+    activePointer = null;
     if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
 
     if (currentStroke.points.length === 1) {
@@ -211,8 +153,8 @@
       currentStroke.points = [
         point,
         {
-          x: point.x + 0.0001,
-          y: point.y + 0.0001,
+          x: point.x >= 1 ? point.x - 0.0001 : point.x + 0.0001,
+          y: point.y >= 1 ? point.y - 0.0001 : point.y + 0.0001,
           elapsedMs: Math.max(16, event.timeStamp - currentStrokeStartedAt)
         }
       ];
@@ -267,11 +209,11 @@
       class="board-viewport"
       class:trace-active={traceMode}
       class:background-drag-active={backgroundDragActive}
-      style={`width:${paperSize.width * zoom}px;height:${paperSize.height * zoom}px`}
+      style={`width:${paperSize.width * Math.min(zoom, 1)}px;height:${paperSize.height * Math.min(zoom, 1)}px`}
     >
       <div
         class={`paper lines-${lineStyle}`}
-        style={`--paper:${pageColour};--zoom:${zoom};width:${paperSize.width}px;height:${paperSize.height}px`}
+        style={`--paper:${pageColour};--zoom:${(paperSize.width / BOARD_WIDTH) * zoom};width:${BOARD_WIDTH}px;height:${BOARD_HEIGHT}px`}
       >
         {#if backgroundImage}
           <img
@@ -298,52 +240,11 @@
           on:pointerdown={startStroke}
           on:pointermove={moveStroke}
           on:pointerup={endStroke}
-          on:pointercancel={endStroke}
+          on:pointercancel={handlePointerCancel}
+          on:lostpointercapture={handlePointerCancel}
           on:paste={handleCanvasPaste}
         >
-          {#key replayNonce}
-            <g class:replaying>
-              {#if traceMode && replaying}
-                <g class="trace-stroke-layer" aria-hidden="true">
-                  {#each strokes as stroke (stroke.id)}
-                    <path
-                      d={smoothPath(stroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
-                      fill="none"
-                      stroke="#9ca3af"
-                      stroke-width={stroke.width}
-                      stroke-opacity={0.42}
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  {/each}
-                </g>
-              {/if}
-              {#each strokes as stroke, index (stroke.id)}
-                <path
-                  bind:this={replayPaths[index]}
-                  class="replay-path"
-                  d={smoothPath(stroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
-                  fill="none"
-                  stroke={stroke.colour}
-                  stroke-width={stroke.width}
-                  stroke-opacity={stroke.opacity}
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  pathLength="1"
-                  style={`--delay:${timingFor(index).delaySeconds}s;--duration:${timingFor(index).durationSeconds}s`}
-                />
-              {/each}
-            </g>
-          {/key}
-          {#if penVisible}
-            <AnimatedPen
-              x={penX}
-              y={penY}
-              rotation={penRotation}
-              colour={animatedPenColour}
-              scale={1}
-            />
-          {/if}
+          <StrokeLayer {strokes} {traceMode} {replaying} {replayNonce} {playbackRate} />
           {#if currentStroke}
             <path
               d={smoothPath(currentStroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
@@ -405,8 +306,10 @@
   .paper {
     --paper: #fffdf7;
     --zoom: 1;
-    position: relative;
-    transform: scale(var(--zoom));
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(var(--zoom));
     transform-origin: center;
     overflow: hidden;
     background-color: var(--paper);
@@ -506,13 +409,6 @@
   }
   .empty-prompt small {
     font-size: 11px;
-  }
-  .replaying .replay-path {
-    stroke-dasharray: 1;
-    stroke-dashoffset: 1;
-  }
-  .trace-stroke-layer {
-    pointer-events: none;
   }
   .drop-prompt {
     position: absolute;

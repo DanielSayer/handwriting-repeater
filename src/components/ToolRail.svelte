@@ -45,6 +45,7 @@
     <div class="segmented" aria-label="Pen type">
       <button
         class:active={penType === 'marker'}
+        aria-pressed={penType === 'marker'}
         on:click={() => (penType = 'marker')}
         title="Marker"
         aria-label="Marker pen"
@@ -53,6 +54,7 @@
       </button>
       <button
         class:active={penType === 'pencil'}
+        aria-pressed={penType === 'pencil'}
         on:click={() => (penType = 'pencil')}
         title="Pencil"
         aria-label="Pencil"
@@ -68,6 +70,7 @@
       {#each [3, 6, 10] as size (size)}
         <button
           class:active={penSize === size}
+          aria-pressed={penSize === size}
           on:click={() => (penSize = size)}
           aria-label={`${size === 3 ? 'Small' : size === 6 ? 'Medium' : 'Large'} pen`}
           ><span style={`width:${size + 3}px;height:${size + 3}px`}></span></button
@@ -82,6 +85,7 @@
       {#each INK_COLOURS as colour (colour)}
         <button
           class:active={penColour === colour}
+          aria-pressed={penColour === colour}
           style={`--swatch:${colour}`}
           on:click={() => (penColour = colour)}
           aria-label={`Use ${colour} ink`}
@@ -95,6 +99,7 @@
     <button
       class="mode-button"
       class:active={traceMode}
+      aria-pressed={traceMode}
       on:click={() => (traceMode = !traceMode)}
       aria-label="Trace mode"
       title="Trace mode"
@@ -104,6 +109,7 @@
     <button
       class="mode-button"
       class:active={loopMode}
+      aria-pressed={loopMode}
       on:click={() => (loopMode = !loopMode)}
       aria-label="Loop replay"
       title="Loop replay"

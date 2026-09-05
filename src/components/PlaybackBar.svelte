@@ -5,6 +5,7 @@
   export let zoom: number;
   export let speed: number;
   export let replaying: boolean;
+  export let canReplay = true;
   export let onReplay: () => void;
   export let onStop: () => void;
 
@@ -16,7 +17,11 @@
     <span>Zoom</span>
     <input type="range" min="0.8" max="1.25" step="0.05" bind:value={zoom} />
   </label>
-  <button class="rewrite-button" on:click={replaying ? onStop : onReplay}>
+  <button
+    class="rewrite-button"
+    disabled={!canReplay && !replaying}
+    on:click={() => (replaying ? onStop() : onReplay())}
+  >
     <Icon name={replaying ? 'stop' : 'play'} size={15} />
     {replaying ? 'Stop' : 'Rewrite'}
   </button>
@@ -28,6 +33,7 @@
       max="5"
       step="1"
       bind:value={speed}
+      on:input={onStop}
       aria-label={`Write speed ${playbackRateLabel}`}
       aria-valuetext={playbackRateLabel}
     />
@@ -84,6 +90,11 @@
   .rewrite-button:hover {
     filter: brightness(1.06);
     transform: rotate(-0.5deg);
+  }
+  .rewrite-button:disabled {
+    opacity: 0.5;
+    cursor: default;
+    transform: none;
   }
   .rewrite-button:active {
     transform: translateY(1px);

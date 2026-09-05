@@ -1,15 +1,12 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import Modal from './Modal.svelte';
   import Icon from './Icon.svelte';
 
   export let onClose: () => void;
   export let onStart: (minutes: number) => void;
 
-  let minutesInput: HTMLInputElement;
   let draftMinutes: number | undefined;
   let error = '';
-
-  onMount(() => minutesInput.focus());
 
   function startTimer(): void {
     if (!Number.isInteger(draftMinutes) || (draftMinutes ?? 0) < 1) {
@@ -19,16 +16,10 @@
 
     onStart(draftMinutes as number);
   }
-
-  function handleKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') onClose();
-  }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
-
-<div class="modal-backdrop">
-  <div class="timer-panel" role="dialog" aria-modal="true" aria-labelledby="timer-title">
+<Modal labelId="timer-title" width={420} {onClose}>
+  <div class="timer-panel ph-no-capture">
     <form on:submit|preventDefault={startTimer}>
       <div class="panel-header">
         <h2 id="timer-title">Add a timer</h2>
@@ -41,7 +32,6 @@
       <div class="minutes-field">
         <input
           id="timer-minutes"
-          bind:this={minutesInput}
           bind:value={draftMinutes}
           type="number"
           inputmode="numeric"
@@ -61,29 +51,9 @@
       </div>
     </form>
   </div>
-</div>
+</Modal>
 
 <style>
-  .modal-backdrop {
-    position: fixed;
-    z-index: 50;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: 20px;
-    background: rgba(30, 36, 48, 0.32);
-    backdrop-filter: blur(2px);
-  }
-  .timer-panel {
-    width: min(420px, 100%);
-    padding: 22px;
-    border: 1.5px solid var(--line);
-    border-radius: 14px 18px 13px 17px;
-    background: var(--panel);
-    box-shadow:
-      5px 6px 0 rgba(37, 48, 68, 0.12),
-      0 24px 60px rgba(30, 36, 48, 0.2);
-  }
   .panel-header {
     display: flex;
     align-items: flex-start;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Modal from './Modal.svelte';
   import Icon from './Icon.svelte';
 
   export let guideText: string;
@@ -8,25 +9,30 @@
   export let onPlace: (text: string, rows: number, size: number) => void;
 
   let draftText = guideText;
-  let draftRepeatCount = repeatCount;
+  let draftRepeatCount: number | undefined = repeatCount;
+  let error = '';
   let draftGuideSize = guideSize;
 
   function placeGuide(): void {
+    if (
+      !Number.isInteger(draftRepeatCount) ||
+      !draftRepeatCount ||
+      draftRepeatCount < 1 ||
+      draftRepeatCount > 8
+    ) {
+      error = 'Enter a whole number of rows between 1 and 8.';
+      return;
+    }
     onPlace(draftText.trim(), draftRepeatCount, draftGuideSize);
   }
 
   function removeGuide(): void {
-    onPlace('', draftRepeatCount, draftGuideSize);
+    onPlace('', repeatCount, draftGuideSize);
   }
 </script>
 
-<div class="modal-backdrop">
-  <div
-    class="text-panel ph-no-capture"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="guide-title"
-  >
+<Modal labelId="guide-title" width={540} {onClose}>
+  <div class="text-panel ph-no-capture">
     <div class="panel-header">
       <h2 id="guide-title">Type something to practise</h2>
       <button on:click={onClose} aria-label="Close text panel"
@@ -50,6 +56,7 @@
         </select>
       </label>
     </div>
+    {#if error}<p role="alert">{error}</p>{/if}
     <div class="preset-row">
       <span>Try a preset</span>
       <button on:click={() => (draftText = 'a b c d e f g')}>Alphabet</button>
@@ -61,29 +68,9 @@
       <button class="primary" on:click={placeGuide}>Place on board</button>
     </div>
   </div>
-</div>
+</Modal>
 
 <style>
-  .modal-backdrop {
-    position: fixed;
-    z-index: 50;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: 20px;
-    background: rgba(30, 36, 48, 0.32);
-    backdrop-filter: blur(2px);
-  }
-  .text-panel {
-    width: min(540px, 100%);
-    padding: 22px;
-    border: 1.5px solid var(--line);
-    border-radius: 14px 18px 13px 17px;
-    background: var(--panel);
-    box-shadow:
-      5px 6px 0 rgba(37, 48, 68, 0.12),
-      0 24px 60px rgba(30, 36, 48, 0.2);
-  }
   .panel-header {
     display: flex;
     justify-content: space-between;
@@ -203,9 +190,6 @@
   }
 
   @media (max-width: 620px) {
-    .text-panel {
-      padding: 18px;
-    }
     .form-grid {
       grid-template-columns: 1fr;
     }

@@ -42,21 +42,25 @@
     <div class="line-options">
       <button
         class:active={lineStyle === 'ruled'}
+        aria-pressed={lineStyle === 'ruled'}
         on:click={() => (lineStyle = 'ruled')}
         aria-label="Ruled lines"><i class="line-icon ruled"></i></button
       >
       <button
         class:active={lineStyle === 'dotted'}
+        aria-pressed={lineStyle === 'dotted'}
         on:click={() => (lineStyle = 'dotted')}
         aria-label="Dotted lines"><i class="line-icon dotted"></i></button
       >
       <button
         class:active={lineStyle === 'grid'}
+        aria-pressed={lineStyle === 'grid'}
         on:click={() => (lineStyle = 'grid')}
         aria-label="Grid"><i class="line-icon grid"></i></button
       >
       <button
         class:active={lineStyle === 'blank'}
+        aria-pressed={lineStyle === 'blank'}
         on:click={() => (lineStyle = 'blank')}
         aria-label="Blank page"><i class="line-icon blank"></i></button
       >
@@ -69,6 +73,7 @@
       {#each PAPER_OPTIONS as paper (paper.value)}
         <button
           class:active={pageColour === paper.value}
+          aria-pressed={pageColour === paper.value}
           style={`--paper-swatch:${paper.value}`}
           on:click={() => (pageColour = paper.value)}
           aria-label={paper.name}

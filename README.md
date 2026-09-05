@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/DanielSayer/handwriting-repeater/actions/workflows/ci.yml/badge.svg)](https://github.com/DanielSayer/handwriting-repeater/actions/workflows/ci.yml)
 
-A private, browser-local handwriting whiteboard. Draw naturally, add practice guides, trace an image, replay strokes at their original pace, and export the finished board as a PNG.
+A private, browser-local handwriting whiteboard. Draw naturally, add practice guides, trace an image, replay strokes at their original pace, and export a one-loop animated GIF.
 
 [Open Repeat](https://www.handwriting-repeater.com/)
 
@@ -13,7 +13,7 @@ A private, browser-local handwriting whiteboard. Draw naturally, add practice gu
 - Handwriting prompts repeated across the page for practice
 - PNG, JPEG, or WebP tracing backgrounds with adjustable opacity
 - Stroke replay with speed control and optional looping
-- Browser-local persistence and PNG export
+- Browser-local persistence and animated GIF export
 - Responsive layouts for desktop, tablet, and mobile
 - Branded large-card previews when a deployed link is shared
 
@@ -33,7 +33,7 @@ pnpm dev
 
 Vite prints the local address when the development server starts.
 
-PostHog is optional. Copy `.env.example` to `.env.local` and set `VITE_PUBLIC_POSTHOG_KEY` to enable analytics. `VITE_PUBLIC_POSTHOG_HOST` defaults to the US PostHog Cloud host. Local development logs a configuration error when the key is absent, but the app still starts.
+PostHog is optional. Copy `.env.example` to `.env.local` and set `VITE_PUBLIC_POSTHOG_KEY` to enable analytics. `VITE_PUBLIC_POSTHOG_HOST` defaults to the US PostHog Cloud host. Without a key, the SDK is not loaded. With a key, analytics starts after the first paint and queues early feature events.
 
 ## Quality checks
 
@@ -85,6 +85,10 @@ public/          # Icons, web app manifest, and crawler policy
 
 ## Privacy and storage
 
-Saved boards use the browser's local storage. Clearing site data removes them, and storage is not shared across browsers or devices. Large tracing images are resized before storage, but a browser may still reject a board if its site-storage quota is exhausted.
+Saved boards use the browser's local storage. Clearing site data removes them, and storage is not shared across browsers or devices. Large tracing images are resized before storage, but a browser may still reject a board if its site-storage quota is exhausted. A visible warning reports save failures. Saves wait for a 300 ms pause in edits, run at least every two seconds during continuous edits, and flush when the page is hidden or closed. An abrupt browser or device crash can still lose the latest unsaved edits.
 
-When configured, PostHog autocaptures page views and ordinary controls. Custom events cover drawing starts, replay, guides, background imports, GIF exports, timers, and failures. The drawing surface and guide editor are excluded from autocapture. The app creates anonymous IDs only and disables person profiles and session replay.
+When configured, PostHog records page views and the explicit events below. Automatic control capture is disabled. Custom events cover drawing starts, replay, guides, background imports, GIF exports, timers, and failures. Guide text, paths, filenames, image data, and raw error messages are excluded from event payloads. The app creates anonymous IDs only and disables person profiles and session replay.
+
+## Performance and code review
+
+See [the September 2026 audit](docs/performance-audit-2026-09-05.md) for measurements, fixed bugs, component boundaries, regression coverage, and remaining limits. GIF encoding runs in an on-demand worker where OffscreenCanvas is available, with a main-thread fallback for older browsers.

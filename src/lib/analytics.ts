@@ -1,7 +1,6 @@
-import posthog from 'posthog-js';
+import type { PostHog } from 'posthog-js';
 import type { LineStyle, PenType } from './types';
 
-const POSTHOG_KEY_VARIABLE = 'VITE_PUBLIC_POSTHOG_KEY';
 const DEFAULT_POSTHOG_HOST = 'https://us.i.posthog.com';
 
 interface AnalyticsEvents {
@@ -45,48 +44,69 @@ interface AnalyticsEvents {
   };
 }
 
-let initialized = false;
+let client: PostHog | undefined;
+let initialization: Promise<void> | undefined;
+const pendingEvents: Array<(posthog: PostHog) => void> = [];
 
-export function initAnalytics(): void {
-  if (initialized) return;
+export function initAnalytics(): Promise<void> {
+  if (initialization) return initialization;
 
   const apiKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY?.trim();
 
   if (!apiKey) {
-    if (import.meta.env.DEV) {
-      console.error(
-        `${POSTHOG_KEY_VARIABLE} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${POSTHOG_KEY_VARIABLE} is configured`
-      );
-    }
-    return;
+    return Promise.resolve();
   }
 
   const apiHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST?.trim() || DEFAULT_POSTHOG_HOST;
 
-  posthog.init(apiKey, {
-    api_host: apiHost,
-    defaults: '2026-05-30',
-    autocapture: true,
-    capture_pageview: true,
-    disable_session_recording: true,
-    person_profiles: 'never',
-    session_recording: {
-      maskAllInputs: true,
-      maskTextSelector: '*'
-    }
-  });
-  initialized = true;
+  initialization = import('posthog-js')
+    .then(({ default: posthog }) => {
+      posthog.init(apiKey, {
+        api_host: apiHost,
+        defaults: '2026-05-30',
+        autocapture: false,
+        capture_pageview: true,
+        disable_session_recording: true,
+        person_profiles: 'never',
+        session_recording: {
+          maskAllInputs: true,
+          maskTextSelector: '*'
+        }
+      });
+      client = posthog;
+      pendingEvents.splice(0).forEach((capture) => safelyCapture(capture, posthog));
+    })
+    .catch(() => {
+      // Analytics is optional, including when the SDK request is blocked or offline.
+      pendingEvents.length = 0;
+      initialization = undefined;
+    });
+  return initialization;
+}
+
+function enqueue(capture: (posthog: PostHog) => void): void {
+  if (!import.meta.env.VITE_PUBLIC_POSTHOG_KEY?.trim()) return;
+  if (client) safelyCapture(capture, client);
+  else if (pendingEvents.length < 50) pendingEvents.push(capture);
+}
+
+function safelyCapture(capture: (posthog: PostHog) => void, posthog: PostHog): void {
+  try {
+    capture(posthog);
+  } catch {
+    // Telemetry failure must never interrupt drawing or export.
+  }
 }
 
 export function captureEvent<EventName extends keyof AnalyticsEvents>(
   event: EventName,
   properties: AnalyticsEvents[EventName]
 ): void {
-  if (!initialized) return;
-  posthog.capture(event, properties);
+  enqueue((posthog) => posthog.capture(event, properties));
 }
 
 export function captureException(error: unknown, flow: 'background_add' | 'gif_export'): void {
-  if (!initialized) return;
-  posthog.captureException(error, { flow });
+  // Do not send arbitrary error messages, which can contain filenames or URLs.
+  void error;
+  enqueue((posthog) => posthog.captureException(new Error(`${flow} failed`), { flow }));
 }

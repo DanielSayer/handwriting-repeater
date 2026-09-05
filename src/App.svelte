@@ -2,6 +2,7 @@
   import { onMount, tick } from 'svelte';
   import AppHeader from './components/AppHeader.svelte';
   import BoardCanvas from './components/BoardCanvas.svelte';
+  import BoardPersistence from './components/BoardPersistence.svelte';
   import GuideDialog from './components/GuideDialog.svelte';
   import PageRail from './components/PageRail.svelte';
   import PlaybackBar from './components/PlaybackBar.svelte';
@@ -10,13 +11,11 @@
   import { captureEvent, captureException } from './lib/analytics';
   import { DEFAULT_BOARD_STATE } from './lib/constants';
   import { prepareBackgroundImage } from './lib/backgroundImage';
-  import { downloadBoardGif } from './lib/exportBoard';
   import {
     createReplaySchedule,
     playbackRateForSpeed,
     replayDuration as getReplayDuration
   } from './lib/replay';
-  import { loadBoard, saveBoard } from './lib/storage';
   import type {
     BoardBackground,
     BoardStroke,
@@ -25,12 +24,12 @@
     PersistedBoardState
   } from './lib/types';
 
-  let hydrated = false;
   let strokes: BoardStroke[] = [];
   let backgroundImage: BoardBackground | null = DEFAULT_BOARD_STATE.backgroundImage;
   let backgroundOpacity = DEFAULT_BOARD_STATE.backgroundOpacity;
   let backgroundLoading = false;
   let backgroundError = '';
+  let backgroundRequest = 0;
   let redoStack: BoardStroke[] = [];
   let penColour = DEFAULT_BOARD_STATE.penColour;
   let penSize = DEFAULT_BOARD_STATE.penSize;
@@ -74,23 +73,11 @@
     repeatCount,
     guideSize
   } satisfies PersistedBoardState;
-  $: if (hydrated) {
-    try {
-      saveBoard(persistedState);
-    } catch {
-      /* Large browser-local boards may exceed the storage quota. */
-    }
-  }
-
   onMount(() => {
-    try {
-      const saved = loadBoard();
-      if (saved) restoreBoard(saved);
-    } catch {
-      /* Invalid saved data falls back to the default board. */
-    }
-    hydrated = true;
-    return () => clearTimeout(replayTimer);
+    return () => {
+      stopReplay();
+      backgroundRequest += 1;
+    };
   });
 
   function restoreBoard(saved: Partial<PersistedBoardState>): void {
@@ -124,6 +111,7 @@
   }
 
   function undo(): void {
+    stopReplay();
     const stroke = strokes.at(-1);
     if (!stroke) return;
     redoStack = [...redoStack, stroke];
@@ -131,6 +119,7 @@
   }
 
   function redo(): void {
+    stopReplay();
     const stroke = redoStack.at(-1);
     if (!stroke) return;
     strokes = [...strokes, stroke];
@@ -147,6 +136,7 @@
 
   function stopReplay(): void {
     clearTimeout(replayTimer);
+    replayNonce += 1;
     replaying = false;
   }
 
@@ -156,8 +146,9 @@
     }
 
     stopReplay();
+    const nonce = replayNonce;
     await tick();
-    replayNonce += 1;
+    if (nonce !== replayNonce || !strokes.length) return;
     replaying = true;
     if (!automaticLoop) {
       captureEvent('replay_started', {
@@ -200,22 +191,28 @@
   }
 
   async function setBackground(file: File): Promise<void> {
+    const request = ++backgroundRequest;
     backgroundLoading = true;
     backgroundError = '';
 
     try {
-      backgroundImage = await prepareBackgroundImage(file);
+      const image = await prepareBackgroundImage(file);
+      if (request !== backgroundRequest) return;
+      backgroundImage = image;
       captureEvent('background_added', { file_type: file.type });
     } catch (error) {
+      if (request !== backgroundRequest) return;
       backgroundError = error instanceof Error ? error.message : 'That image could not be added.';
       captureEvent('background_add_failed', { file_type: file.type });
       captureException(error, 'background_add');
     } finally {
-      backgroundLoading = false;
+      if (request === backgroundRequest) backgroundLoading = false;
     }
   }
 
   function removeBackground(): void {
+    backgroundRequest += 1;
+    backgroundLoading = false;
     backgroundImage = null;
     backgroundError = '';
   }
@@ -225,21 +222,23 @@
     exporting = true;
     exportError = '';
 
+    const options = {
+      strokes,
+      backgroundImage,
+      backgroundOpacity,
+      boardWidth,
+      boardHeight,
+      pageColour,
+      lineStyle,
+      guideText,
+      repeatCount,
+      guideSize,
+      playbackRate,
+      traceMode
+    };
     try {
-      await downloadBoardGif({
-        strokes,
-        backgroundImage,
-        backgroundOpacity,
-        boardWidth,
-        boardHeight,
-        pageColour,
-        lineStyle,
-        guideText,
-        repeatCount,
-        guideSize,
-        playbackRate,
-        traceMode
-      });
+      const { downloadBoardGif } = await import('./lib/downloadBoard');
+      await downloadBoardGif(options);
       captureEvent('gif_exported', {
         stroke_count: strokes.length,
         line_style: lineStyle,
@@ -282,6 +281,7 @@
 
 <div class="app-shell">
   <AppHeader />
+  <BoardPersistence state={persistedState} onRestore={restoreBoard} />
   <main class="workspace">
     <ToolRail
       bind:penType
@@ -326,7 +326,14 @@
         onBackgroundSelected={(file) => void setBackground(file)}
         onBackgroundError={reportBackgroundSelectionError}
       />
-      <PlaybackBar bind:zoom bind:speed {replaying} onReplay={replay} onStop={stopReplay} />
+      <PlaybackBar
+        bind:zoom
+        bind:speed
+        {replaying}
+        canReplay={strokes.length > 0}
+        onReplay={() => void replay()}
+        onStop={stopReplay}
+      />
     </section>
 
     <PageRail
