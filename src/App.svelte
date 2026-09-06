@@ -234,7 +234,8 @@
       repeatCount,
       guideSize,
       playbackRate,
-      traceMode
+      traceMode,
+      loopMode
     };
     try {
       const { downloadBoardGif } = await import('./lib/downloadBoard');

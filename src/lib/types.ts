@@ -62,4 +62,5 @@ export interface ExportBoardOptions {
   guideSize: number;
   playbackRate: number;
   traceMode: boolean;
+  loopMode: boolean;
 }

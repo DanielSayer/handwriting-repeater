@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GIFEncoder } from 'gifenc';
-import { createGifFramePlan, partialStrokePoints } from './exportBoard';
+import { createGifFramePlan, encodeBoardGif, partialStrokePoints } from './exportBoard';
 import type { BoardStroke } from './types';
 
 const stroke: BoardStroke = {
@@ -57,6 +57,50 @@ describe('partialStrokePoints', () => {
 });
 
 describe('GIF encoding', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each([false, true])('respects loopMode=%s in the exported GIF', async (loopMode) => {
+    vi.stubGlobal(
+      'OffscreenCanvas',
+      class {
+        getContext() {
+          return {
+            fillRect() {},
+            clearRect() {},
+            drawImage() {},
+            getImageData: () => ({ data: new Uint8ClampedArray(960 * 4).fill(255) })
+          };
+        }
+      }
+    );
+
+    const blob = await encodeBoardGif({
+      strokes: [],
+      backgroundImage: null,
+      backgroundOpacity: 1,
+      boardWidth: 960,
+      boardHeight: 1,
+      pageColour: '#ffffff',
+      lineStyle: 'blank',
+      guideText: '',
+      repeatCount: 1,
+      guideSize: 48,
+      playbackRate: 1,
+      traceMode: false,
+      loopMode
+    });
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    expect(findAscii(bytes, 'NETSCAPE2.0')).toBe(loopMode);
+    if (loopMode) {
+      const extension = bytes.findIndex((_, index) =>
+        Array.from('NETSCAPE2.0').every(
+          (character, offset) => bytes[index + offset] === character.charCodeAt(0)
+        )
+      );
+      expect(Array.from(bytes.slice(extension + 11, extension + 16))).toEqual([3, 1, 0, 0, 0]);
+    }
+  });
+
   it('writes an animated GIF with no repeat extension', () => {
     const gif = GIFEncoder();
     const palette = [

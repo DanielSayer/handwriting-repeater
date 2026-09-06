@@ -44,7 +44,7 @@ export async function encodeBoardGif(options: ExportBoardOptions): Promise<Blob>
     gif.writeFrame(indexedPixels, width, height, {
       delay: frame.delayMs,
       palette: index === 0 ? palette : undefined,
-      repeat: -1
+      repeat: options.loopMode ? 0 : -1
     });
 
     await yieldToBrowser();
