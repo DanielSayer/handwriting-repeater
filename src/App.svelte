@@ -345,6 +345,7 @@
       {backgroundLoading}
       {backgroundError}
       {exporting}
+      {loopMode}
       {exportError}
       onOpenGuide={() => (guideDialogOpen = true)}
       onExport={exportBoard}

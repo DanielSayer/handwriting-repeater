@@ -11,6 +11,7 @@
   export let backgroundLoading: boolean;
   export let backgroundError: string;
   export let exporting: boolean;
+  export let loopMode: boolean;
   export let exportError: string;
   export let onOpenGuide: () => void;
   export let onExport: () => void;
@@ -137,7 +138,7 @@
     <span class="tool-icon"><Icon name="download" /></span>
     <span
       ><strong>{exporting ? 'Making GIF…' : 'Save replay'}</strong><small
-        >Download a one-loop GIF</small
+        >{loopMode ? 'Download an infinitely looping GIF' : 'Download a one-loop GIF'}</small
       ></span
     >
   </button>
