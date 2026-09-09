@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "gifenc": "1.0.3",
-    "posthog-js": "^1.423.0",
+    "posthog-js": "^1.427.2",
     "svelte-file-dropzone": "2.0.9"
   }
 }
