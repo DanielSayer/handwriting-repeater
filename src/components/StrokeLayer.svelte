@@ -61,6 +61,7 @@
     if (penAnimationFrame !== undefined) cancelAnimationFrame(penAnimationFrame);
     penAnimationFrame = undefined;
     penVisible = false;
+    for (const path of replayPaths) path?.style.removeProperty('visibility');
   }
 
   function updatePenPosition(index: number, elapsedSeconds: number): void {
@@ -91,15 +92,19 @@
       const timing = timingFor(nextStroke);
       const path = replayPaths[nextStroke];
       if (elapsedSeconds >= timing.delaySeconds + timing.durationSeconds) {
-        if (path) path.style.strokeDashoffset = '0';
+        if (path) {
+          path.style.strokeDashoffset = '0';
+          path.style.visibility = 'visible';
+        }
         nextStroke += 1;
         continue;
       }
       if (elapsedSeconds < timing.delaySeconds) return -1;
-      if (path)
-        path.style.strokeDashoffset = String(
-          1 - strokeReplayProgress(strokes[nextStroke], timing, elapsedSeconds)
-        );
+      if (path) {
+        const progress = strokeReplayProgress(strokes[nextStroke], timing, elapsedSeconds);
+        path.style.strokeDashoffset = String(1 - progress);
+        path.style.visibility = progress > 0 ? 'visible' : 'hidden';
+      }
       return nextStroke;
     }
     return -1;
@@ -150,6 +155,8 @@
 
 <style>
   .replaying .replay-path {
+    /* A fully offset dash can still paint a rounded endpoint at some display scales. */
+    visibility: hidden;
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
   }
