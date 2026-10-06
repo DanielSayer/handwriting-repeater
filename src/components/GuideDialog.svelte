@@ -23,6 +23,14 @@
       error = 'Enter a whole number of rows between 1 and 8.';
       return;
     }
+    if (!draftText.trim()) {
+      error = 'Enter some text to practise.';
+      return;
+    }
+    if (draftText.trim().split(/\r?\n/).length * draftRepeatCount > 8) {
+      error = 'Use up to 8 lines in total, including repeats.';
+      return;
+    }
     onPlace(draftText.trim(), draftRepeatCount, draftGuideSize);
   }
 
@@ -34,7 +42,7 @@
 <Modal labelId="guide-title" width={540} {onClose}>
   <div class="text-panel ph-no-capture">
     <div class="panel-header">
-      <h2 id="guide-title">Type something to practise</h2>
+      <h2 id="guide-title">{guideText ? 'Edit guide text' : 'Type something to practise'}</h2>
       <button on:click={onClose} aria-label="Close text panel"
         ><Icon name="close" size={16} /></button
       >
@@ -44,18 +52,23 @@
     ></textarea>
     <div class="form-grid">
       <label>
-        <span>Rows</span>
+        <span>Repeat count</span>
         <input type="number" min="1" max="8" bind:value={draftRepeatCount} />
       </label>
       <label>
-        <span>Text size</span>
-        <select bind:value={draftGuideSize}>
-          <option value={32}>Small</option>
-          <option value={42}>Medium</option>
-          <option value={54}>Large</option>
+        <span>Font</span>
+        <select disabled aria-describedby="font-hint">
+          <option>Handwriting</option>
         </select>
+        <small id="font-hint">More fonts coming soon</small>
       </label>
     </div>
+    <div class="guide-preview" aria-label="Guide text preview">
+      <span style={`font-size:clamp(20px, 4vw, ${Math.min(draftGuideSize, 54)}px)`}
+        >{draftText || 'The quick brown fox…'}</span
+      >
+    </div>
+    <p class="placement-hint">Move and resize your guide on the board after placing it.</p>
     {#if error}<p role="alert">{error}</p>{/if}
     <div class="preset-row">
       <span>Try a preset</span>
@@ -65,12 +78,41 @@
     </div>
     <div class="panel-actions">
       {#if guideText}<button class="secondary" on:click={removeGuide}>Remove guide</button>{/if}
-      <button class="primary" on:click={placeGuide}>Place on board</button>
+      <button class="primary" on:click={placeGuide}
+        >{guideText ? 'Apply and adjust' : 'Place on board'}</button
+      >
     </div>
   </div>
 </Modal>
 
 <style>
+  .guide-preview {
+    margin-top: 16px;
+    min-height: 92px;
+    max-height: 180px;
+    overflow: auto;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+  }
+  .guide-preview span {
+    font-family: var(--hand);
+    color: #8f9aa6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .placement-hint,
+  .form-grid small {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .placement-hint {
+    margin: 10px 0 0;
+  }
+  select:disabled {
+    opacity: 0.65;
+  }
   .panel-header {
     display: flex;
     justify-content: space-between;

@@ -31,6 +31,12 @@ export interface GuideRow {
   topPercent: number;
 }
 
+export interface GuideLayout {
+  x: number;
+  y: number;
+  rowSpacing: number;
+}
+
 export interface PersistedBoardState {
   strokes: BoardStroke[];
   backgroundImage: BoardBackground | null;
@@ -47,6 +53,7 @@ export interface PersistedBoardState {
   guideText: string;
   repeatCount: number;
   guideSize: number;
+  guideLayout: GuideLayout | null;
 }
 
 export interface ExportBoardOptions {
@@ -60,6 +67,7 @@ export interface ExportBoardOptions {
   guideText: string;
   repeatCount: number;
   guideSize: number;
+  guideLayout?: GuideLayout | null;
   playbackRate: number;
   traceMode: boolean;
   loopMode: boolean;

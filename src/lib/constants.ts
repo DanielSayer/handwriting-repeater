@@ -36,5 +36,6 @@ export const DEFAULT_BOARD_STATE: PersistedBoardState = {
   traceMode: false,
   guideText: '',
   repeatCount: 4,
-  guideSize: 42
+  guideSize: 42,
+  guideLayout: null
 };

@@ -43,6 +43,8 @@
   let guideText = DEFAULT_BOARD_STATE.guideText;
   let repeatCount = DEFAULT_BOARD_STATE.repeatCount;
   let guideSize = DEFAULT_BOARD_STATE.guideSize;
+  let guideLayout = DEFAULT_BOARD_STATE.guideLayout;
+  let editingGuide = false;
   let boardWidth = 960;
   let boardHeight = 560;
   let replaying = false;
@@ -71,7 +73,8 @@
     traceMode,
     guideText,
     repeatCount,
-    guideSize
+    guideSize,
+    guideLayout
   } satisfies PersistedBoardState;
   onMount(() => {
     return () => {
@@ -96,6 +99,7 @@
     guideText = saved.guideText ?? guideText;
     repeatCount = saved.repeatCount ?? repeatCount;
     guideSize = saved.guideSize ?? guideSize;
+    guideLayout = saved.guideLayout ?? null;
   }
 
   function addStroke(stroke: BoardStroke): void {
@@ -131,6 +135,8 @@
     strokes = [];
     redoStack = [];
     guideText = '';
+    editingGuide = false;
+    guideLayout = null;
     stopReplay();
   }
 
@@ -147,6 +153,7 @@
 
     stopReplay();
     const nonce = replayNonce;
+    editingGuide = false;
     await tick();
     if (nonce !== replayNonce || !strokes.length) return;
     replaying = true;
@@ -174,6 +181,15 @@
     guideText = text;
     repeatCount = Math.max(1, Math.min(8, rows));
     guideSize = size;
+    if (!hadGuide)
+      guideLayout = {
+        x: 67.2,
+        y: 74,
+        rowSpacing: lineStyle === 'grid' ? 48 : 92
+      };
+    editingGuide = Boolean(text);
+    if (!text) guideLayout = null;
+    stopReplay();
     guideDialogOpen = false;
     if (text) {
       captureEvent('guide_placed', {
@@ -233,6 +249,7 @@
       guideText,
       repeatCount,
       guideSize,
+      guideLayout,
       playbackRate,
       traceMode,
       loopMode
@@ -315,7 +332,9 @@
         {playbackRate}
         {guideText}
         {repeatCount}
-        {guideSize}
+        bind:guideSize
+        bind:guideLayout
+        bind:editingGuide
         {backgroundImage}
         {backgroundOpacity}
         {timer}
@@ -348,6 +367,12 @@
       {loopMode}
       {exportError}
       onOpenGuide={() => (guideDialogOpen = true)}
+      hasGuide={Boolean(guideText)}
+      {editingGuide}
+      onAdjustGuide={() => {
+        stopReplay();
+        editingGuide = !editingGuide;
+      }}
       onExport={exportBoard}
       onBackgroundSelected={(file) => void setBackground(file)}
       onRemoveBackground={removeBackground}

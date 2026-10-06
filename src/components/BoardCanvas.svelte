@@ -6,13 +6,23 @@
   import TimerWidget from './TimerWidget.svelte';
   import { BACKGROUND_IMAGE_ACCEPT, MAX_BACKGROUND_FILE_SIZE } from '../lib/backgroundImage';
   import { BOARD_ASPECT_RATIO, BOARD_HEIGHT, BOARD_WIDTH } from '../lib/constants';
+  import { fitBoardToViewport, pointFromPointer, smoothPath } from '../lib/drawing';
   import {
-    createGuideRows,
-    fitBoardToViewport,
-    pointFromPointer,
-    smoothPath
-  } from '../lib/drawing';
-  import type { BoardBackground, BoardStroke, LineStyle, PenType, Point } from '../lib/types';
+    GUIDE_FONT,
+    clamp,
+    guideMetrics,
+    guideBounds,
+    guideBaselines,
+    constrainGuide
+  } from '../lib/guide';
+  import type {
+    BoardBackground,
+    BoardStroke,
+    GuideLayout,
+    LineStyle,
+    PenType,
+    Point
+  } from '../lib/types';
 
   interface BackgroundDropDetail {
     acceptedFiles: File[];
@@ -33,6 +43,8 @@
   export let guideText: string;
   export let repeatCount: number;
   export let guideSize: number;
+  export let guideLayout: GuideLayout | null;
+  export let editingGuide: boolean;
   export let backgroundImage: BoardBackground | null;
   export let backgroundOpacity: number;
   export let timer: { startedAt: number; durationMinutes: number } | null;
@@ -53,12 +65,30 @@
   let strokeFrame: number | undefined;
   let backgroundDragActive = false;
   let resizeAnimationFrame: number | undefined;
+  let measureContext: CanvasRenderingContext2D | null = null;
+  let guideGesture: {
+    pointer: number;
+    x: number;
+    y: number;
+    layout: GuideLayout;
+    size: number;
+    scale: boolean;
+    bounds: { x: number; y: number; width: number; height: number };
+  } | null = null;
 
-  $: guideRows = createGuideRows(guideText, repeatCount);
+  $: metrics = measureContext
+    ? guideMetrics(measureContext, guideText, repeatCount, guideSize)
+    : null;
+  $: guideRows = metrics ? guideBaselines(guideText, repeatCount, guideLayout, metrics) : [];
+  $: bounds = metrics && guideLayout ? guideBounds(metrics, guideLayout) : null;
+  $: if (editingGuide && measureContext && guideText && repeatCount) editGuide();
+  $: if (editingGuide || replaying) cancelStroke();
+  $: if (!editingGuide || replaying) cancelGuideGesture();
   $: paperSize = fitBoardToViewport(viewportWidth, viewportHeight, BOARD_ASPECT_RATIO);
-  $: if (replaying) cancelStroke();
+  $: handleSize = Math.max(24, (32 * BOARD_WIDTH) / Math.max(1, paperSize.width * zoom));
 
   onMount(() => {
+    measureContext = document.createElement('canvas').getContext('2d');
     const measureViewport = (): void => {
       const rect = boardStage.getBoundingClientRect();
       viewportWidth = rect.width;
@@ -81,11 +111,16 @@
       document.removeEventListener('fullscreenchange', measureOnNextFrame);
       if (resizeAnimationFrame !== undefined) cancelAnimationFrame(resizeAnimationFrame);
       cancelStroke();
+      cancelGuideGesture();
     };
   });
 
   function startStroke(event: PointerEvent): void {
     svg.focus({ preventScroll: true });
+    if (editingGuide) {
+      startGuideGesture(event);
+      return;
+    }
     if (event.button !== 0 || replaying || activePointer !== null) return;
     activePointer = event.pointerId;
     svg.setPointerCapture(event.pointerId);
@@ -101,6 +136,10 @@
   }
 
   function moveStroke(event: PointerEvent): void {
+    if (guideGesture) {
+      moveGuideGesture(event);
+      return;
+    }
     if (!drawing || !currentStroke || event.pointerId !== activePointer) return;
     const coalescedEvents = event.getCoalescedEvents?.();
     const pointerEvents = coalescedEvents?.length ? coalescedEvents : [event];
@@ -134,10 +173,19 @@
   }
 
   function handlePointerCancel(event: PointerEvent): void {
+    if (event.pointerId === guideGesture?.pointer) {
+      guideLayout = guideGesture.layout;
+      guideSize = guideGesture.size;
+      cancelGuideGesture();
+    }
     if (event.pointerId === activePointer) cancelStroke();
   }
 
   function endStroke(event: PointerEvent): void {
+    if (event.pointerId === guideGesture?.pointer) {
+      cancelGuideGesture();
+      return;
+    }
     if (!drawing || !currentStroke || event.pointerId !== activePointer) return;
     flushStroke();
     activePointer = null;
@@ -165,6 +213,113 @@
     drawing = false;
   }
 
+  function cancelGuideGesture(): void {
+    const pointer = guideGesture?.pointer;
+    guideGesture = null;
+    if (pointer !== undefined && svg?.hasPointerCapture(pointer))
+      svg.releasePointerCapture(pointer);
+  }
+
+  function updateGuide(size: number, spacing: number): void {
+    if (!guideLayout || !measureContext) return;
+    const requestedSize = clamp(size, 12, 160);
+    let nextSpacing = clamp(spacing, 16, 160);
+    let nextMetrics = guideMetrics(measureContext, guideText, repeatCount, requestedSize);
+    const count = nextMetrics.lines.length - 1;
+    const fit = Math.min(
+      1,
+      (BOARD_WIDTH - 16) / nextMetrics.width,
+      (BOARD_HEIGHT - 16) / (nextMetrics.ascent + nextMetrics.descent + count * nextSpacing)
+    );
+    guideSize = Math.max(12, requestedSize * fit);
+    nextSpacing = Math.max(16, nextSpacing * fit);
+    nextMetrics = guideMetrics(measureContext, guideText, repeatCount, guideSize);
+    guideLayout = constrainGuide({ ...guideLayout, rowSpacing: nextSpacing }, nextMetrics);
+  }
+
+  function editGuide(): void {
+    if (!metrics) return;
+    guideLayout ??= {
+      x: guideRows[0]?.x ?? 67,
+      y: guideRows[0]?.y ?? 74,
+      rowSpacing: repeatCount > 1 ? 358.4 / (repeatCount - 1) : 92
+    };
+    updateGuide(guideSize, guideLayout.rowSpacing);
+    editingGuide = true;
+  }
+
+  function startGuideGesture(event: PointerEvent): void {
+    const action = (event.target as SVGElement).dataset.guideAction;
+    if (event.button !== 0 || replaying || guideGesture || !guideLayout || !bounds || !action)
+      return;
+    event.preventDefault();
+    const point = pointFromPointer(event, svg);
+    guideGesture = {
+      pointer: event.pointerId,
+      x: point.x * BOARD_WIDTH,
+      y: point.y * BOARD_HEIGHT,
+      layout: { ...guideLayout },
+      size: guideSize,
+      scale: action === 'scale',
+      bounds: { ...bounds }
+    };
+    svg.setPointerCapture(event.pointerId);
+  }
+
+  function moveGuideGesture(event: PointerEvent): void {
+    const gesture = guideGesture;
+    if (!gesture || event.pointerId !== gesture.pointer || !metrics) return;
+    const point = pointFromPointer(event, svg);
+    const dx = point.x * BOARD_WIDTH - gesture.x;
+    const dy = point.y * BOARD_HEIGHT - gesture.y;
+    if (gesture.scale) {
+      const { width, height } = gesture.bounds;
+      const scale = Math.max(
+        0.1,
+        1 + (dx * width + dy * height) / (width * width + height * height)
+      );
+      guideLayout = { ...gesture.layout };
+      updateGuide(gesture.size * scale, gesture.layout.rowSpacing * scale);
+      // Keep the top-left corner anchored while the baseline follows the new font size.
+      if (measureContext && guideLayout) {
+        const next = guideMetrics(measureContext, guideText, repeatCount, guideSize);
+        guideLayout = constrainGuide({ ...guideLayout, y: gesture.bounds.y + next.ascent }, next);
+      }
+    } else {
+      guideLayout = constrainGuide(
+        { ...gesture.layout, x: gesture.layout.x + dx, y: gesture.layout.y + dy },
+        metrics
+      );
+    }
+  }
+
+  function guideKeyboard(event: KeyboardEvent): void {
+    if (!editingGuide || !guideLayout || !metrics) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      editingGuide = false;
+      return;
+    }
+    const step = event.shiftKey ? 10 : 1;
+    const directions: Record<string, [number, number]> = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step]
+    };
+    const direction = directions[event.key];
+    if (direction) {
+      event.preventDefault();
+      guideLayout = constrainGuide(
+        { ...guideLayout, x: guideLayout.x + direction[0], y: guideLayout.y + direction[1] },
+        metrics
+      );
+    } else if (event.key === '+' || event.key === '-') {
+      event.preventDefault();
+      updateGuide(guideSize + (event.key === '+' ? step : -step), guideLayout.rowSpacing);
+    }
+  }
+
   function handleBackgroundDrop(event: CustomEvent<BackgroundDropDetail>): void {
     backgroundDragActive = false;
     const file = event.detail.acceptedFiles[0];
@@ -190,95 +345,147 @@
   }
 </script>
 
-<Dropzone
-  accept={BACKGROUND_IMAGE_ACCEPT}
-  maxSize={MAX_BACKGROUND_FILE_SIZE}
-  multiple={false}
-  noClick={true}
-  noKeyboard={true}
-  disableDefaultStyles={true}
-  containerClasses="canvas-dropzone"
-  on:drop={handleBackgroundDrop}
-  on:dragenter={() => (backgroundDragActive = true)}
-  on:dragleave={() => (backgroundDragActive = false)}
-  role="presentation"
-  tabindex="-1"
->
-  <div class="board-stage ph-no-capture" bind:this={boardStage}>
-    <div
-      class="board-viewport"
-      class:trace-active={traceMode}
-      class:background-drag-active={backgroundDragActive}
-      style={`width:${paperSize.width * Math.min(zoom, 1)}px;height:${paperSize.height * Math.min(zoom, 1)}px`}
-    >
+<div class="canvas-workspace">
+  <Dropzone
+    accept={BACKGROUND_IMAGE_ACCEPT}
+    maxSize={MAX_BACKGROUND_FILE_SIZE}
+    multiple={false}
+    noClick={true}
+    noKeyboard={true}
+    disableDefaultStyles={true}
+    containerClasses="canvas-dropzone"
+    on:drop={handleBackgroundDrop}
+    on:dragenter={() => (backgroundDragActive = true)}
+    on:dragleave={() => (backgroundDragActive = false)}
+    role="presentation"
+    tabindex="-1"
+  >
+    <div class="board-stage ph-no-capture" bind:this={boardStage}>
       <div
-        class={`paper lines-${lineStyle}`}
-        style={`--paper:${pageColour};--zoom:${(paperSize.width / BOARD_WIDTH) * zoom};width:${BOARD_WIDTH}px;height:${BOARD_HEIGHT}px`}
+        class="board-viewport"
+        class:trace-active={traceMode}
+        class:background-drag-active={backgroundDragActive}
+        style={`width:${paperSize.width * Math.min(zoom, 1)}px;height:${paperSize.height * Math.min(zoom, 1)}px`}
       >
-        {#if backgroundImage}
-          <img
-            class="background-image"
-            src={backgroundImage.src}
-            alt=""
-            style={`opacity:${backgroundOpacity}`}
-          />
-        {/if}
-        <div class="paper-grain"></div>
-        <div class="guide-layer" aria-hidden="true">
-          {#each guideRows as row (row.id)}
-            <span style={`top:${row.topPercent}%;font-size:${guideSize}px`}>{row.text}</span>
-          {/each}
-        </div>
-        <!-- svelte-ignore a11y_no_noninteractive_tabindex (the drawing surface needs focus for clipboard paste) -->
-        <svg
-          class="drawing-layer"
-          bind:this={svg}
-          viewBox={`0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`}
-          tabindex="0"
-          aria-label="Handwriting canvas. Paste an image to use it as a background."
-          role="application"
-          on:pointerdown={startStroke}
-          on:pointermove={moveStroke}
-          on:pointerup={endStroke}
-          on:pointercancel={handlePointerCancel}
-          on:lostpointercapture={handlePointerCancel}
-          on:paste={handleCanvasPaste}
+        <div
+          class={`paper lines-${lineStyle}`}
+          style={`--paper:${pageColour};--zoom:${(paperSize.width / BOARD_WIDTH) * zoom};width:${BOARD_WIDTH}px;height:${BOARD_HEIGHT}px`}
         >
-          <StrokeLayer {strokes} {traceMode} {replaying} {replayNonce} {playbackRate} />
-          {#if currentStroke}
-            <path
-              d={smoothPath(currentStroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
-              fill="none"
-              stroke={currentStroke.colour}
-              stroke-width={currentStroke.width}
-              stroke-opacity={currentStroke.opacity}
-              stroke-linecap="round"
-              stroke-linejoin="round"
+          {#if backgroundImage}
+            <img
+              class="background-image"
+              src={backgroundImage.src}
+              alt=""
+              style={`opacity:${backgroundOpacity}`}
             />
           {/if}
-        </svg>
-        {#if !strokes.length && !guideText && !backgroundImage}
-          <div class="empty-prompt" aria-hidden="true">
-            <Icon name="marker" size={30} />
-            <p>Write something here</p>
-            <small>Draw, drop an image, or paste one with Ctrl+V</small>
-          </div>
-        {/if}
-        {#if backgroundDragActive}
-          <div class="drop-prompt" aria-hidden="true">
-            <strong>Drop image to trace</strong>
-            <span>PNG, JPEG, or WebP</span>
-          </div>
-        {/if}
+          <div class="paper-grain"></div>
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions (the drawing application handles pointer gestures, keyboard guide adjustment and clipboard paste) -->
+          <svg
+            class="drawing-layer"
+            bind:this={svg}
+            viewBox={`0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`}
+            tabindex="0"
+            aria-label={editingGuide
+              ? 'Guide editor. Arrow keys move, plus and minus resize, Escape finishes editing.'
+              : 'Handwriting canvas. Paste an image to use it as a background.'}
+            role="application"
+            on:pointerdown={startStroke}
+            on:pointermove={moveStroke}
+            on:pointerup={endStroke}
+            on:pointercancel={handlePointerCancel}
+            on:lostpointercapture={handlePointerCancel}
+            on:paste={handleCanvasPaste}
+            on:keydown={guideKeyboard}
+          >
+            <g
+              aria-hidden="true"
+              pointer-events="none"
+              fill={traceMode ? '#8f9aa6' : '#a7b0b8'}
+              opacity={traceMode ? 0.78 : 0.62}
+              font-family={GUIDE_FONT}
+              font-size={guideSize}
+              letter-spacing={guideSize * 0.05}
+            >
+              {#each guideRows as row, index (index)}
+                <text x={row.x} y={row.y} xml:space="preserve">{row.text}</text>
+              {/each}
+            </g>
+            <StrokeLayer {strokes} {traceMode} {replaying} {replayNonce} {playbackRate} />
+            {#if editingGuide && bounds}
+              <g aria-hidden="true" class="guide-selection">
+                <rect
+                  data-guide-action="move"
+                  x={bounds.x - 5}
+                  y={bounds.y - 5}
+                  width={bounds.width + 10}
+                  height={bounds.height + 10}
+                  fill="transparent"
+                  stroke="var(--ink)"
+                  stroke-width="1.5"
+                  vector-effect="non-scaling-stroke"
+                  stroke-dasharray="5 3"
+                  style="cursor:move"
+                />
+                <rect
+                  data-guide-action="scale"
+                  x={bounds.x + bounds.width - handleSize}
+                  y={bounds.y + bounds.height - handleSize}
+                  width={handleSize}
+                  height={handleSize}
+                  rx="5"
+                  fill="var(--ink)"
+                  stroke="var(--paper)"
+                  stroke-width="2"
+                  vector-effect="non-scaling-stroke"
+                  style="cursor:nwse-resize"
+                />
+              </g>
+            {/if}
+            {#if currentStroke}
+              <path
+                d={smoothPath(currentStroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
+                fill="none"
+                stroke={currentStroke.colour}
+                stroke-width={currentStroke.width}
+                stroke-opacity={currentStroke.opacity}
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            {/if}
+          </svg>
+          {#if !strokes.length && !guideText && !backgroundImage}
+            <div class="empty-prompt" aria-hidden="true">
+              <Icon name="marker" size={30} />
+              <p>Write something here</p>
+              <small>Draw, drop an image, or paste one with Ctrl+V</small>
+            </div>
+          {/if}
+          {#if backgroundDragActive}
+            <div class="drop-prompt" aria-hidden="true">
+              <strong>Drop image to trace</strong>
+              <span>PNG, JPEG, or WebP</span>
+            </div>
+          {/if}
+        </div>
       </div>
+      {#if timer}
+        <TimerWidget startedAt={timer.startedAt} durationMinutes={timer.durationMinutes} />
+      {/if}
     </div>
-    {#if timer}
-      <TimerWidget startedAt={timer.startedAt} durationMinutes={timer.durationMinutes} />
-    {/if}
-  </div>
-</Dropzone>
+  </Dropzone>
+</div>
 
 <style>
+  .canvas-workspace {
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .guide-selection {
+    touch-action: none;
+  }
   .board-stage {
     position: relative;
     min-width: 0;
@@ -360,8 +567,7 @@
       linear-gradient(90deg, #cfdfeb 1px, transparent 1px);
     background-size: 48px 48px;
   }
-  .drawing-layer,
-  .guide-layer {
+  .drawing-layer {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -369,26 +575,7 @@
   }
   .drawing-layer {
     z-index: 4;
-  }
-  .guide-layer {
-    z-index: 3;
-    pointer-events: none;
-  }
-  .guide-layer span {
-    position: absolute;
-    left: 7%;
-    max-width: 86%;
-    overflow: hidden;
-    white-space: nowrap;
-    transform: translateY(-50%);
-    color: #a7b0b8;
-    font-family: var(--hand);
-    letter-spacing: 0.05em;
-    opacity: 0.62;
-  }
-  .trace-active .guide-layer span {
-    color: #8f9aa6;
-    opacity: 0.78;
+    user-select: none;
   }
   .empty-prompt {
     position: absolute;

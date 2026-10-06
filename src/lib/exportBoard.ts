@@ -1,6 +1,6 @@
 import { segmentAt, strokeGeometry } from './strokeGeometry';
 import { GIFEncoder, applyPalette, quantize } from 'gifenc';
-import { createGuideRows } from './drawing';
+import { GUIDE_FONT, guideMetrics, guideBaselines } from './guide';
 import { createReplaySchedule, replayDuration, strokeReplayProgress } from './replay';
 import type { BoardStroke, ExportBoardOptions, LineStyle, Point } from './types';
 
@@ -277,11 +277,18 @@ function drawGuide(
   context.save();
   context.fillStyle = options.traceMode ? '#8f9aa6' : '#a7b0b8';
   context.globalAlpha = options.traceMode ? 0.78 : 0.62;
-  context.font = `${Math.round(options.guideSize * (width / options.boardWidth))}px "Comic Sans MS", cursive`;
-  context.textBaseline = 'middle';
-  context.letterSpacing = `${options.guideSize * (width / options.boardWidth) * 0.05}px`;
-  for (const row of createGuideRows(options.guideText, options.repeatCount)) {
-    context.fillText(row.text, width * 0.07, (row.topPercent / 100) * height);
+  const metrics = guideMetrics(context, options.guideText, options.repeatCount, options.guideSize);
+  context.scale(width / options.boardWidth, height / options.boardHeight);
+  context.font = `${options.guideSize}px ${GUIDE_FONT}`;
+  context.textBaseline = 'alphabetic';
+  context.letterSpacing = `${options.guideSize * 0.05}px`;
+  for (const row of guideBaselines(
+    options.guideText,
+    options.repeatCount,
+    options.guideLayout ?? null,
+    metrics
+  )) {
+    context.fillText(row.text, row.x, row.y);
   }
   context.restore();
 }

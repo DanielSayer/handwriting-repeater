@@ -74,7 +74,19 @@ export function parseBoardState(value: unknown): PersistedBoardState {
   if (numberInRange(value.zoom, 0.8, 1.25)) state.zoom = value.zoom;
   if (numberInRange(value.speed, -1, 5)) state.speed = value.speed;
   if (numberInRange(value.repeatCount, 1, 8)) state.repeatCount = Math.round(value.repeatCount);
-  if (numberInRange(value.guideSize, 16, 100)) state.guideSize = value.guideSize;
+  if (numberInRange(value.guideSize, 12, 160)) state.guideSize = value.guideSize;
+  if (
+    record(value.guideLayout) &&
+    numberInRange(value.guideLayout.x, 0, 960) &&
+    numberInRange(value.guideLayout.y, 0, 560) &&
+    numberInRange(value.guideLayout.rowSpacing, 16, 160)
+  ) {
+    state.guideLayout = {
+      x: value.guideLayout.x,
+      y: value.guideLayout.y,
+      rowSpacing: value.guideLayout.rowSpacing
+    };
+  }
   if (typeof value.guideText === 'string') state.guideText = value.guideText;
   if (typeof value.loopMode === 'boolean') state.loopMode = value.loopMode;
   if (typeof value.traceMode === 'boolean') state.traceMode = value.traceMode;

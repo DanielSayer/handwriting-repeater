@@ -14,6 +14,9 @@
   export let loopMode: boolean;
   export let exportError: string;
   export let onOpenGuide: () => void;
+  export let hasGuide: boolean;
+  export let editingGuide: boolean;
+  export let onAdjustGuide: () => void;
   export let onExport: () => void;
   export let onBackgroundSelected: (file: File) => void;
   export let onRemoveBackground: () => void;
@@ -33,10 +36,25 @@
 </script>
 
 <aside class="page-rail" aria-label="Page tools">
-  <button class="page-tool" on:click={onOpenGuide}>
-    <span class="tool-icon"><Icon name="type" /></span>
-    <span><strong>Type a guide</strong><small>Add text to trace</small></span>
-  </button>
+  <div class="guide-tools">
+    <button class="page-tool" on:click={onOpenGuide}>
+      <span class="tool-icon"><Icon name="type" /></span>
+      <span
+        ><strong>{hasGuide ? 'Edit guide' : 'Type a guide'}</strong><small
+          >{hasGuide ? 'Change text and repeats' : 'Add text to trace'}</small
+        ></span
+      >
+    </button>
+    {#if hasGuide}
+      <button class="adjust-guide" class:editing={editingGuide} on:click={onAdjustGuide}
+        ><Icon name={editingGuide ? 'check' : 'drag'} size={16} />{editingGuide
+          ? 'Done'
+          : 'Move / resize'}</button
+      >
+      {#if editingGuide}<small class="guide-hint">Drag to move. Drag the corner to scale.</small
+        >{/if}
+    {/if}
+  </div>
 
   <div class="page-group">
     <span class="rail-heading">Page lines</span>
@@ -148,6 +166,54 @@
 </aside>
 
 <style>
+  .guide-tools {
+    min-width: 0;
+    border: 1.5px solid var(--line);
+    border-radius: 9px 12px 8px 11px;
+    background: var(--paper);
+  }
+  .guide-tools .page-tool {
+    border: 0;
+    background: transparent;
+  }
+  .guide-tools:focus-within {
+    border-color: var(--ink);
+  }
+  .adjust-guide {
+    width: calc(100% - 20px);
+    min-height: 38px;
+    margin: 0 10px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 1.5px solid var(--line);
+    border-radius: 8px 11px 7px 10px;
+    background: var(--panel);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+    transition:
+      border-color 0.15s ease,
+      transform 0.15s ease;
+  }
+  .adjust-guide:hover {
+    border-color: var(--ink);
+    transform: rotate(-0.5deg);
+  }
+  .adjust-guide.editing {
+    background: var(--ink);
+    color: white;
+    border-color: var(--ink);
+  }
+  .guide-hint {
+    display: block;
+    margin: -2px 10px 10px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.5;
+  }
   .page-rail {
     min-height: 0;
     padding: 14px;
@@ -400,6 +466,16 @@
   }
 
   @media (min-width: 1400px) {
+    .adjust-guide {
+      width: calc(100% - 24px);
+      min-height: 42px;
+      margin: 0 12px 12px;
+      font-size: 13px;
+    }
+    .guide-hint {
+      margin: -2px 12px 12px;
+      font-size: 11px;
+    }
     .page-rail {
       padding: 18px;
     }
