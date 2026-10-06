@@ -1,6 +1,7 @@
 import { segmentAt, strokeGeometry } from './strokeGeometry';
 import { GIFEncoder, applyPalette, quantize } from 'gifenc';
-import { GUIDE_FONT, guideMetrics, guideBaselines } from './guide';
+import { guideMetrics, guideBaselines } from './guide';
+import { guideFontFamily, loadGuideFont } from './guideFonts';
 import { createReplaySchedule, replayDuration, strokeReplayProgress } from './replay';
 import type { BoardStroke, ExportBoardOptions, LineStyle, Point } from './types';
 
@@ -18,6 +19,7 @@ export interface GifFrame {
 }
 
 export async function encodeBoardGif(options: ExportBoardOptions): Promise<Blob> {
+  if (options.guideText) await loadGuideFont(options.guideFont);
   const width = EXPORT_WIDTH;
   const height = Math.round(width * (options.boardHeight / options.boardWidth));
   const canvas = createCanvas(width, height);
@@ -277,9 +279,15 @@ function drawGuide(
   context.save();
   context.fillStyle = options.traceMode ? '#8f9aa6' : '#a7b0b8';
   context.globalAlpha = options.traceMode ? 0.78 : 0.62;
-  const metrics = guideMetrics(context, options.guideText, options.repeatCount, options.guideSize);
+  const metrics = guideMetrics(
+    context,
+    options.guideText,
+    options.repeatCount,
+    options.guideSize,
+    options.guideFont
+  );
   context.scale(width / options.boardWidth, height / options.boardHeight);
-  context.font = `${options.guideSize}px ${GUIDE_FONT}`;
+  context.font = `${options.guideSize}px ${guideFontFamily(options.guideFont)}`;
   context.textBaseline = 'alphabetic';
   context.letterSpacing = `${options.guideSize * 0.05}px`;
   for (const row of guideBaselines(

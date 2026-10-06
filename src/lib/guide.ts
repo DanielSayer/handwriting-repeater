@@ -1,8 +1,8 @@
 import { BOARD_HEIGHT, BOARD_WIDTH } from './constants';
 import { createGuideRows } from './drawing';
 import type { GuideLayout } from './types';
+import { DEFAULT_GUIDE_FONT, guideFontFamily, type GuideFontId } from './guideFonts';
 
-export const GUIDE_FONT = '"Segoe Print", "Comic Sans MS", cursive';
 export const clamp = (value: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, value));
 
@@ -15,9 +15,10 @@ export function guideMetrics(
   context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   text: string,
   repeats: number,
-  size: number
+  size: number,
+  font: GuideFontId = DEFAULT_GUIDE_FONT
 ) {
-  context.font = `${size}px ${GUIDE_FONT}`;
+  context.font = `${size}px ${guideFontFamily(font)}`;
   context.letterSpacing = `${size * 0.05}px`;
   const lines = guideLines(text, repeats);
   const metrics = lines.map((line) => context.measureText(line || ' '));

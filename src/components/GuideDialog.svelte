@@ -1,10 +1,12 @@
 <script lang="ts">
   import Modal from './Modal.svelte';
   import Icon from './Icon.svelte';
+  import { GUIDE_FONTS, guideFontFamily, loadGuideFont, type GuideFontId } from '../lib/guideFonts';
 
   export let guideText: string;
   export let repeatCount: number;
   export let guideSize: number;
+  export let guideFont: GuideFontId;
   export let onClose: () => void;
   export let onPlace: (text: string, rows: number, size: number) => void;
 
@@ -12,8 +14,25 @@
   let draftRepeatCount: number | undefined = repeatCount;
   let error = '';
   let draftGuideSize = guideSize;
+  let loadedFont: GuideFontId | null = null;
+  let fontError = false;
+  let requestedFont: GuideFontId | null = null;
+  $: fontReady = loadedFont === guideFont;
+  $: void requestFont(guideFont);
+
+  async function requestFont(font: GuideFontId): Promise<void> {
+    requestedFont = font;
+    fontError = false;
+    try {
+      await loadGuideFont(font);
+      if (requestedFont === font) loadedFont = font;
+    } catch {
+      if (requestedFont === font) fontError = true;
+    }
+  }
 
   function placeGuide(): void {
+    if (!fontReady) return;
     if (
       !Number.isInteger(draftRepeatCount) ||
       !draftRepeatCount ||
@@ -48,8 +67,12 @@
       >
     </div>
     <label class="field-label" for="guide-copy">Words or sentence</label>
-    <textarea id="guide-copy" rows="3" bind:value={draftText} placeholder="The quick brown fox…"
-    ></textarea>
+    <textarea
+      id="guide-copy"
+      rows="3"
+      bind:value={draftText}
+      placeholder="The quick brown fox…"
+      style={`font-family:${guideFontFamily(guideFont)}`}></textarea>
     <div class="form-grid">
       <label>
         <span>Repeat count</span>
@@ -57,16 +80,26 @@
       </label>
       <label>
         <span>Font</span>
-        <select disabled aria-describedby="font-hint">
-          <option>Handwriting</option>
+        <select bind:value={guideFont}>
+          {#each GUIDE_FONTS as font (font.id)}
+            <option value={font.id}>{font.label}</option>
+          {/each}
         </select>
-        <small id="font-hint">More fonts coming soon</small>
       </label>
     </div>
     <div class="guide-preview" aria-label="Guide text preview">
-      <span style={`font-size:clamp(20px, 4vw, ${Math.min(draftGuideSize, 54)}px)`}
-        >{draftText || 'The quick brown fox…'}</span
-      >
+      {#if fontError}
+        <p class="font-status" role="alert">
+          This font could not load. <button on:click={() => requestFont(guideFont)}>Retry</button>
+        </p>
+      {:else if !fontReady}
+        <p class="font-status" role="status">Loading font…</p>
+      {:else}
+        <span
+          style={`font-family:${guideFontFamily(guideFont)};font-size:clamp(20px, 4vw, ${Math.min(draftGuideSize, 54)}px)`}
+          >{draftText || 'The quick brown fox…'}</span
+        >
+      {/if}
     </div>
     <p class="placement-hint">Move and resize your guide on the board after placing it.</p>
     {#if error}<p role="alert">{error}</p>{/if}
@@ -78,7 +111,7 @@
     </div>
     <div class="panel-actions">
       {#if guideText}<button class="secondary" on:click={removeGuide}>Remove guide</button>{/if}
-      <button class="primary" on:click={placeGuide}
+      <button class="primary" on:click={placeGuide} disabled={!fontReady}
         >{guideText ? 'Apply and adjust' : 'Place on board'}</button
       >
     </div>
@@ -86,6 +119,23 @@
 </Modal>
 
 <style>
+  .font-status {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .font-status button {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 5px 10px;
+    background: var(--panel);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .panel-actions .primary:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
   .guide-preview {
     margin-top: 16px;
     min-height: 92px;
@@ -102,8 +152,7 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
-  .placement-hint,
-  .form-grid small {
+  .placement-hint {
     color: var(--muted);
     font-size: 12px;
   }
@@ -171,7 +220,7 @@
   }
   .form-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(100px, 1fr) minmax(0, 2fr);
     gap: 14px;
     margin-top: 14px;
   }
@@ -179,6 +228,13 @@
   .form-grid select {
     height: 40px;
     padding: 0 10px;
+  }
+  .form-grid select {
+    appearance: none;
+    padding: 0 36px 0 12px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23253044' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
   }
   .preset-row {
     display: flex;

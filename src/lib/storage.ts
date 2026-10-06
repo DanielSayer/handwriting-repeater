@@ -1,4 +1,5 @@
 import { DEFAULT_BOARD_STATE, STORAGE_KEY } from './constants';
+import { isGuideFont } from './guideFonts';
 import type { BoardStroke, PersistedBoardState, Point } from './types';
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -88,6 +89,7 @@ export function parseBoardState(value: unknown): PersistedBoardState {
     };
   }
   if (typeof value.guideText === 'string') state.guideText = value.guideText;
+  if (isGuideFont(value.guideFont)) state.guideFont = value.guideFont;
   if (typeof value.loopMode === 'boolean') state.loopMode = value.loopMode;
   if (typeof value.traceMode === 'boolean') state.traceMode = value.traceMode;
   return state;

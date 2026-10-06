@@ -7,14 +7,8 @@
   import { BACKGROUND_IMAGE_ACCEPT, MAX_BACKGROUND_FILE_SIZE } from '../lib/backgroundImage';
   import { BOARD_ASPECT_RATIO, BOARD_HEIGHT, BOARD_WIDTH } from '../lib/constants';
   import { fitBoardToViewport, pointFromPointer, smoothPath } from '../lib/drawing';
-  import {
-    GUIDE_FONT,
-    clamp,
-    guideMetrics,
-    guideBounds,
-    guideBaselines,
-    constrainGuide
-  } from '../lib/guide';
+  import { clamp, guideMetrics, guideBounds, guideBaselines, constrainGuide } from '../lib/guide';
+  import { guideFontFamily, loadGuideFont, type GuideFontId } from '../lib/guideFonts';
   import type {
     BoardBackground,
     BoardStroke,
@@ -41,6 +35,7 @@
   export let replayNonce: number;
   export let playbackRate: number;
   export let guideText: string;
+  export let guideFont: GuideFontId;
   export let repeatCount: number;
   export let guideSize: number;
   export let guideLayout: GuideLayout | null;
@@ -66,6 +61,9 @@
   let backgroundDragActive = false;
   let resizeAnimationFrame: number | undefined;
   let measureContext: CanvasRenderingContext2D | null = null;
+  let loadedFont: GuideFontId | null = null;
+  let fontError = false;
+  let requestedFont: GuideFontId | null = null;
   let guideGesture: {
     pointer: number;
     x: number;
@@ -76,12 +74,16 @@
     bounds: { x: number; y: number; width: number; height: number };
   } | null = null;
 
-  $: metrics = measureContext
-    ? guideMetrics(measureContext, guideText, repeatCount, guideSize)
-    : null;
+  $: if (guideText && measureContext) requestFont(guideFont);
+  $: fontReady = loadedFont === guideFont;
+  $: if (editingGuide && !fontReady) requestFont(guideFont);
+  $: metrics =
+    measureContext && fontReady
+      ? guideMetrics(measureContext, guideText, repeatCount, guideSize, guideFont)
+      : null;
   $: guideRows = metrics ? guideBaselines(guideText, repeatCount, guideLayout, metrics) : [];
   $: bounds = metrics && guideLayout ? guideBounds(metrics, guideLayout) : null;
-  $: if (editingGuide && measureContext && guideText && repeatCount) editGuide();
+  $: if (editingGuide && fontReady && measureContext && guideText && repeatCount) editGuide();
   $: if (editingGuide || replaying) cancelStroke();
   $: if (!editingGuide || replaying) cancelGuideGesture();
   $: paperSize = fitBoardToViewport(viewportWidth, viewportHeight, BOARD_ASPECT_RATIO);
@@ -114,6 +116,17 @@
       cancelGuideGesture();
     };
   });
+
+  async function requestFont(font: GuideFontId): Promise<void> {
+    requestedFont = font;
+    fontError = false;
+    try {
+      await loadGuideFont(font);
+      if (requestedFont === font) loadedFont = font;
+    } catch {
+      if (requestedFont === font) fontError = true;
+    }
+  }
 
   function startStroke(event: PointerEvent): void {
     svg.focus({ preventScroll: true });
@@ -224,7 +237,13 @@
     if (!guideLayout || !measureContext) return;
     const requestedSize = clamp(size, 12, 160);
     let nextSpacing = clamp(spacing, 16, 160);
-    let nextMetrics = guideMetrics(measureContext, guideText, repeatCount, requestedSize);
+    let nextMetrics = guideMetrics(
+      measureContext,
+      guideText,
+      repeatCount,
+      requestedSize,
+      guideFont
+    );
     const count = nextMetrics.lines.length - 1;
     const fit = Math.min(
       1,
@@ -233,7 +252,7 @@
     );
     guideSize = Math.max(12, requestedSize * fit);
     nextSpacing = Math.max(16, nextSpacing * fit);
-    nextMetrics = guideMetrics(measureContext, guideText, repeatCount, guideSize);
+    nextMetrics = guideMetrics(measureContext, guideText, repeatCount, guideSize, guideFont);
     guideLayout = constrainGuide({ ...guideLayout, rowSpacing: nextSpacing }, nextMetrics);
   }
 
@@ -282,7 +301,7 @@
       updateGuide(gesture.size * scale, gesture.layout.rowSpacing * scale);
       // Keep the top-left corner anchored while the baseline follows the new font size.
       if (measureContext && guideLayout) {
-        const next = guideMetrics(measureContext, guideText, repeatCount, guideSize);
+        const next = guideMetrics(measureContext, guideText, repeatCount, guideSize, guideFont);
         guideLayout = constrainGuide({ ...guideLayout, y: gesture.bounds.y + next.ascent }, next);
       }
     } else {
@@ -345,7 +364,12 @@
   }
 </script>
 
-<div class="canvas-workspace">
+<div class="canvas-workspace" class:font-error={fontError}>
+  {#if fontError}
+    <p class="font-warning" role="status">
+      The guide font could not load. <button on:click={() => requestFont(guideFont)}>Retry</button>
+    </p>
+  {/if}
   <Dropzone
     accept={BACKGROUND_IMAGE_ACCEPT}
     maxSize={MAX_BACKGROUND_FILE_SIZE}
@@ -403,7 +427,7 @@
               pointer-events="none"
               fill={traceMode ? '#8f9aa6' : '#a7b0b8'}
               opacity={traceMode ? 0.78 : 0.62}
-              font-family={GUIDE_FONT}
+              font-family={guideFontFamily(guideFont)}
               font-size={guideSize}
               letter-spacing={guideSize * 0.05}
             >
@@ -482,6 +506,21 @@
     min-height: 0;
     display: grid;
     grid-template-rows: minmax(0, 1fr);
+  }
+  .canvas-workspace.font-error {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .font-warning {
+    margin: 0 0 8px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .font-warning button {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 5px 10px;
+    cursor: pointer;
   }
   .guide-selection {
     touch-action: none;

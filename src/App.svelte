@@ -44,6 +44,7 @@
   let repeatCount = DEFAULT_BOARD_STATE.repeatCount;
   let guideSize = DEFAULT_BOARD_STATE.guideSize;
   let guideLayout = DEFAULT_BOARD_STATE.guideLayout;
+  let guideFont = DEFAULT_BOARD_STATE.guideFont;
   let editingGuide = false;
   let boardWidth = 960;
   let boardHeight = 560;
@@ -74,7 +75,8 @@
     guideText,
     repeatCount,
     guideSize,
-    guideLayout
+    guideLayout,
+    guideFont
   } satisfies PersistedBoardState;
   onMount(() => {
     return () => {
@@ -100,6 +102,7 @@
     repeatCount = saved.repeatCount ?? repeatCount;
     guideSize = saved.guideSize ?? guideSize;
     guideLayout = saved.guideLayout ?? null;
+    guideFont = saved.guideFont ?? guideFont;
   }
 
   function addStroke(stroke: BoardStroke): void {
@@ -250,6 +253,7 @@
       repeatCount,
       guideSize,
       guideLayout,
+      guideFont,
       playbackRate,
       traceMode,
       loopMode
@@ -334,6 +338,7 @@
         {repeatCount}
         bind:guideSize
         bind:guideLayout
+        {guideFont}
         bind:editingGuide
         {backgroundImage}
         {backgroundOpacity}
@@ -382,6 +387,7 @@
 
 {#if guideDialogOpen}
   <GuideDialog
+    bind:guideFont
     {guideText}
     {repeatCount}
     {guideSize}

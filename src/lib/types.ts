@@ -1,3 +1,5 @@
+import type { GuideFontId } from './guideFonts';
+
 export type PenType = 'marker' | 'pencil';
 export type LineStyle = 'ruled' | 'dotted' | 'grid' | 'blank';
 
@@ -54,6 +56,7 @@ export interface PersistedBoardState {
   repeatCount: number;
   guideSize: number;
   guideLayout: GuideLayout | null;
+  guideFont: GuideFontId;
 }
 
 export interface ExportBoardOptions {
@@ -68,6 +71,7 @@ export interface ExportBoardOptions {
   repeatCount: number;
   guideSize: number;
   guideLayout?: GuideLayout | null;
+  guideFont?: GuideFontId;
   playbackRate: number;
   traceMode: boolean;
   loopMode: boolean;

@@ -1,4 +1,5 @@
 import type { PaperOption, PersistedBoardState } from './types';
+import { DEFAULT_GUIDE_FONT } from './guideFonts';
 
 export const STORAGE_KEY = 'repeat-whiteboard-v1';
 export const BOARD_WIDTH = 960;
@@ -37,5 +38,6 @@ export const DEFAULT_BOARD_STATE: PersistedBoardState = {
   guideText: '',
   repeatCount: 4,
   guideSize: 42,
-  guideLayout: null
+  guideLayout: null,
+  guideFont: DEFAULT_GUIDE_FONT
 };
