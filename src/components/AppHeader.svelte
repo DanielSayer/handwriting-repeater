@@ -42,21 +42,31 @@
     <h1>Repeat</h1>
     <p>Online handwriting practice, tracing and replay</p>
   </div>
-  <button
-    class="fullscreen-button"
-    type="button"
-    disabled={!fullscreenSupported}
-    aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-    title={fullscreenSupported
-      ? fullscreen
-        ? 'Exit fullscreen'
-        : 'Enter fullscreen'
-      : 'Fullscreen is unavailable in this browser'}
-    on:click={() => void toggleFullscreen()}
-  >
-    <Icon name={fullscreen ? 'exit-fullscreen' : 'fullscreen'} size={18} />
-    <span>{fullscreen ? 'Exit fullscreen' : 'Full screen'}</span>
-  </button>
+  <div class="header-actions">
+    <a
+      class="feedback-link"
+      href="https://tally.so/r/J9NaAz"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Feedback and requests (opens in a new tab)"
+      title="Request a font, suggest a feature or report a bug (opens in a new tab)">Feedback</a
+    >
+    <button
+      class="fullscreen-button"
+      type="button"
+      disabled={!fullscreenSupported}
+      aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+      title={fullscreenSupported
+        ? fullscreen
+          ? 'Exit fullscreen'
+          : 'Enter fullscreen'
+        : 'Fullscreen is unavailable in this browser'}
+      on:click={() => void toggleFullscreen()}
+    >
+      <Icon name={fullscreen ? 'exit-fullscreen' : 'fullscreen'} size={18} />
+      <span>{fullscreen ? 'Exit fullscreen' : 'Full screen'}</span>
+    </button>
+  </div>
 </header>
 
 <style>
@@ -116,9 +126,34 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
+  .header-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .feedback-link {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 10px;
+    border-radius: 9px;
+    color: var(--ink);
+    font-family: var(--hand);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .feedback-link:hover {
+    background: var(--paper);
+    text-decoration: underline;
+  }
+  .feedback-link:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    outline-offset: 2px;
+  }
   .fullscreen-button {
     min-height: 36px;
-    margin-left: auto;
     display: inline-flex;
     align-items: center;
     gap: 7px;

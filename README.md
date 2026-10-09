@@ -19,6 +19,8 @@ A private, browser-local handwriting whiteboard. Draw naturally, add practice gu
 
 Repeat has no backend. Board content and imported images stay in the browser's local storage unless the user exports a GIF. Optional PostHog analytics records anonymous feature use, but never guide text, handwriting paths, filenames, or imported images. Session replay is disabled.
 
+The header's Feedback link opens the [feedback and requests form](https://tally.so/r/J9NaAz) in a new tab. Tally handles messages and optional reply email addresses. The app does not load a Tally script or send board content to the form.
+
 ## Local development
 
 Requirements:
