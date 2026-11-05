@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>2 · One toolbar</title>
+<link rel="icon" href="fav/final.svg">
+<link rel="stylesheet" href="shared.css">
+<style>
+  body { display: grid; grid-template-rows: 62px 1fr; background: #e4e7eb; }
+  .bar { display: flex; align-items: center; gap: 2px; padding: 0 10px; background: #fff; border-bottom: 1px solid var(--line); position: relative; z-index: 3; }
+  .lock { display: flex; align-items: center; gap: 7px; margin-right: 6px; }
+  .lock img { width: 32px; height: 32px; }
+  .lock span { font-size: 13px; font-weight: 700; line-height: 1.1; color: var(--ink); }
+  .lock b { color: var(--blue); font-weight: 800; }
+  .gap { width: 8px; flex: none; }
+  .grow { flex: 1; }
+  .opts { gap: 6px; }
+  .opts .on-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 6px; background: #e8effc; color: var(--blue); font-size: 13px; font-weight: 700; }
+  .stage { padding: 12px; position: relative; }
+  .frame { border-radius: 12px; padding: 7px; }
+  .board { position: absolute; inset: 7px; border-radius: 6px; overflow: hidden; }
+  .group { display: flex; align-items: center; gap: 2px; padding: 0 2px; }
+</style></head>
+<body>
+  <header class="bar">
+    <span class="lock"><img src="fav/final.svg" alt=""><span>handwriting<br><b>repeater</b></span></span>
+    <span class="vr"></span>
+    <div class="group">
+      <button class="btn icon" aria-label="Undo"><i data-i="undo"></i></button>
+      <button class="btn icon" aria-label="Redo" disabled><i data-i="redo"></i></button>
+    </div>
+    <span class="gap"></span>
+    <div class="group">
+      <button class="btn icon sel" aria-label="Marker"><i data-i="marker"></i></button>
+      <button class="btn icon" aria-label="Pencil"><i data-i="pencil"></i></button>
+      <span class="cw"><span class="swatch" style="--c:var(--black)"></span></span><span class="cw"><span class="swatch" style="--c:var(--blue)"></span></span><span class="cw"><span class="swatch on" style="--c:var(--red)"></span></span><span class="cw"><span class="swatch" style="--c:var(--green)"></span></span><span class="cw"><span class="swatch" style="--c:var(--purple)"></span></span><span class="cw"><span class="swatch" style="--c:var(--orange)"></span></span>
+      <button class="btn boxed" aria-label="Marker size: medium" title="Size" style="gap:6px;padding:0 8px"><span class="dot" style="width:10px;height:10px"></span><i data-i="chev" data-s="14"></i></button>
+      <button class="btn"><i data-i="eraser"></i>Wipe</button>
+    </div>
+    <span class="gap"></span><span class="vr"></span><span class="gap"></span>
+    <button class="btn boxed SETUP"><i data-i="sliders"></i>Set up<i data-i="chev" data-s="14"></i></button>
+    <span class="grow"></span>
+    <button class="btn boxed opts" title="Speed, Ghost, Loop">1×<span class="on-tag"><i data-i="trace" data-s="14"></i>Ghost</span><i data-i="chev" data-s="14"></i></button>
+    <span class="gap" style="width:6px"></span>
+    <button class="btn primary"><i data-i="play"></i>Replay</button>
+    <span class="gap" style="width:6px"></span>
+    <button class="btn"><i data-i="download"></i>GIF</button>
+      </header>
+  <main class="stage">
+    <div class="fit frame wb-frame">
+      <div class="board wb-surface"></div>
+      <div class="zoom" style="right:19px;bottom:19px"><button class="btn icon" aria-label="Zoom out"><i data-i="minus" data-s="18"></i></button>100%<button class="btn icon" aria-label="Zoom in"><i data-i="plus" data-s="18"></i></button><button class="btn icon" aria-label="Full screen"><i data-i="fullscreen" data-s="18"></i></button></div>
+    </div>
+    <!--PANEL-->
+  </main>
+  <script src="icons.js"></script><script src="board.js"></script>
+</body></html>

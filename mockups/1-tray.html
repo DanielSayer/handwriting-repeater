@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>1 · Board + tray</title>
+<link rel="icon" href="fav/final.svg">
+<link rel="stylesheet" href="shared.css">
+<style>
+  body { display: grid; grid-template-rows: 56px 1fr; padding: 0 16px 12px; background: #e4e7eb; }
+  .top { display: flex; align-items: center; gap: 2px; }
+  .top .logo { margin-right: 16px; }
+  .grow { flex: 1; }
+  .wrap { container-type: size; display: grid; place-items: center; min-height: 0; }
+  /* frame 8px each side + 64px tray under a 12:7 board */
+  .unit { --w: min(calc(100cqw - 16px), calc((100cqh - 14px - 72px) * 12 / 7)); width: calc(var(--w) + 16px); }
+  .frame { padding: 8px 8px 6px; border-radius: 12px 12px 3px 3px; }
+  .board { width: var(--w); aspect-ratio: 12/7; position: relative; border-radius: 5px; overflow: hidden; }
+  .lip { height: 8px; margin: 0 -6px; border-radius: 0 0 4px 4px; background: linear-gradient(#b9c1ca, #d3d9df); box-shadow: inset 0 2px 2px rgba(0,0,0,.18); }
+  .tray { height: 64px; position: relative; left: 50%; transform: translateX(-50%); width: max-content; min-width: calc(100% + 12px); padding: 0 10px; display: flex; align-items: center; gap: 8px; border-radius: 0 0 8px 8px; background: #f5f6f8; box-shadow: 0 2px 6px rgba(29,36,51,.12), 0 0 0 1px rgba(29,36,51,.05); }
+  
+  .tray .grp + .grp { margin-left: 0; }
+  .grp { display: flex; align-items: center; gap: 2px; }
+</style></head>
+<body>
+  <header class="top">
+    <span class="logo"><img src="fav/final.svg" alt=""><span>handwriting <b>repeater</b></span></span>
+    <button class="btn"><i data-i="type"></i>Guide</button>
+    <button class="btn"><i data-i="lines"></i>Lines</button>
+    <button class="btn"><span class="preview-chip" style="--c:#fcfdfd"></span>Board colour</button>
+    <button class="btn"><i data-i="image"></i>Picture</button>
+    <button class="btn"><i data-i="timer"></i>Timer</button>
+    <span class="grow"></span>
+    <button class="btn"><i data-i="download"></i>Save GIF</button>
+    <button class="btn"><i data-i="feedback"></i>Feedback</button>
+    <button class="btn icon" title="Full screen" aria-label="Full screen"><i data-i="fullscreen"></i></button>
+  </header>
+  <main class="wrap">
+    <div class="unit">
+      <div class="frame wb-frame"><div class="board wb-surface">
+        <div class="zoom"><button class="btn icon" aria-label="Zoom out"><i data-i="minus" data-s="18"></i></button>100%<button class="btn icon" aria-label="Zoom in"><i data-i="plus" data-s="18"></i></button></div>
+      </div></div>
+      <div class="lip"></div>
+      <div class="tray">
+        <div class="grp">
+          <button class="btn icon" aria-label="Undo"><i data-i="undo"></i></button>
+          <button class="btn icon" aria-label="Redo" disabled><i data-i="redo"></i></button>
+        </div>
+        <div class="grp">
+          <button class="btn icon sel" aria-label="Marker"><i data-i="marker"></i></button>
+          <button class="btn icon" aria-label="Pencil"><i data-i="pencil"></i></button>
+        </div>
+        <div class="grp">
+          <span class="cw"><span class="swatch" style="--c:var(--black)"></span></span><span class="cw"><span class="swatch" style="--c:var(--blue)"></span></span><span class="cw"><span class="swatch on" style="--c:var(--red)"></span></span><span class="cw"><span class="swatch" style="--c:var(--green)"></span></span><span class="cw"><span class="swatch" style="--c:var(--purple)"></span></span><span class="cw"><span class="swatch" style="--c:var(--orange)"></span></span>
+        </div>
+        <div class="grp">
+          <button class="btn icon" aria-label="Thin"><span class="dot" style="width:5px;height:5px"></span></button>
+          <button class="btn icon sel" aria-label="Medium"><span class="dot" style="width:10px;height:10px"></span></button>
+          <button class="btn icon" aria-label="Thick"><span class="dot" style="width:16px;height:16px"></span></button>
+        </div>
+        <button class="btn"><i data-i="eraser"></i>Wipe</button>
+        <span class="grow" style="flex:1"></span>
+        <button class="btn tog on" title="Show a faint copy while replaying"><i data-i="trace"></i>Ghost</button>
+        <button class="btn tog"><i data-i="loop"></i>Loop</button>
+        <button class="btn boxed"><i data-i="speed"></i>1×<i data-i="chev" data-s="14"></i></button>
+        <button class="btn primary"><i data-i="play"></i>Replay</button>
+      </div>
+    </div>
+  </main>
+  <script src="icons.js"></script><script src="board.js"></script>
+</body></html>

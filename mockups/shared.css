@@ -1,0 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700;800&family=Edu+NSW+ACT+Foundation:wght@400;700&display=block');
+
+:root {
+  --ui: 'Atkinson Hyperlegible Next', 'Segoe UI', system-ui, sans-serif;
+  --ink: #1d2433;
+  --text: #2a3140;
+  --muted: #5b6372;
+  --line: #d9dde3;
+  --wall: #e9ecef;
+  --chrome: #ffffff;
+  --board: #fcfdfd;
+  --blue: #1f5fd1;
+  --red: #d8392f;
+  --green: #17895a;
+  --black: #1d2026;
+  --purple: #7b4fd0;
+  --orange: #e8891c;
+  --focus: #1f5fd1;
+  --r: 12px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: var(--ui);
+  color: var(--text);
+  background: var(--wall);
+  font-size: 15px;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+svg.i { width: 20px; height: 20px; flex: none; }
+
+/* stage that fits a 12:7 board as large as possible */
+.stage { container-type: size; display: grid; place-items: center; min-height: 0; min-width: 0; }
+.fit { width: min(100cqw, calc(100cqh * 12 / 7)); aspect-ratio: 12 / 7; position: relative; }
+.board-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* logo lockup (small on purpose) */
+.logo { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: var(--ink); letter-spacing: -0.01em; white-space: nowrap; }
+.logo img { width: 26px; height: 26px; display: block; }
+.logo span b { font-weight: 800; color: var(--blue); }
+
+.swatch { width: 26px; height: 26px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+.swatch.on { box-shadow: inset 0 0 0 1px rgba(0,0,0,.12), 0 0 0 2px #fff, 0 0 0 4px var(--ring, var(--c)); }
+.dot { border-radius: 50%; background: currentColor; display: block; }
+.kbd { font-size: 12px; color: var(--muted); }
+
+/* selection rules (all layouts): exclusive choice = ink fill; toggle = blue tint + blue ring; colour = ring */
+.empty-hint { position: absolute; left: 0; right: 0; top: 35.4%; transform: translateY(-50%); margin: 0; text-align: center; font-size: 18px; font-weight: 600; color: #6b7382; pointer-events: none; }
+.empty-hint span { background: var(--board); padding: 2px 10px; border-radius: 6px; }
+
+/* common controls, pass 2 */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; min-width: 44px; padding: 0 12px; border-radius: 11px; font-weight: 600; font-size: 15px; color: var(--ink); white-space: nowrap; }
+.btn.icon { padding: 0; }
+.btn:hover { background: #eef0f3; }
+.btn[disabled] { opacity: .35; }
+.btn.sel { background: var(--ink); color: #fff; }                         /* exclusive choice */
+.btn.tog { box-shadow: inset 0 0 0 1.5px var(--line); }
+.btn.tog.on { background: #e8effc; color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue); } /* toggle */
+.btn.boxed { box-shadow: inset 0 0 0 1.5px var(--line); }
+.btn.primary { background: var(--blue); color: #fff; font-weight: 700; font-size: 16px; padding: 0 20px 0 16px; box-shadow: 0 2px 0 #174aa6; }
+.btn .sub { font-weight: 500; color: var(--muted); }
+.cw { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 10px; }   /* colour hit area */
+.cw .swatch { width: 28px; height: 28px; }
+.preview-chip { flex: none; width: 18px; height: 18px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px #b8bfc8; background: var(--c); }
+.zoom { position: absolute; right: 12px; bottom: 12px; z-index: 2; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 12px; background: rgba(255,255,255,.94); box-shadow: 0 1px 4px rgba(0,0,0,.14); font-size: 14px; font-weight: 700; color: var(--muted); }
+.zoom .btn { min-height: 44px; min-width: 44px; }
+.vr { width: 1px; height: 28px; background: var(--line); margin: 0 6px; flex: none; }
+
+/* whiteboard frame: restrained aluminium bevel, near-flat white surface */
+.wb-frame { background: linear-gradient(#dce1e6, #c4cbd3); box-shadow: inset 0 1px 0 rgba(255,255,255,.85), inset 0 -1px 0 rgba(0,0,0,.08), 0 1px 2px rgba(29,36,51,.14), 0 8px 24px rgba(29,36,51,.08); }
+.wb-surface { background: linear-gradient(160deg, #ffffff 0%, #fbfcfd 60%, #f7f9fa 100%); box-shadow: inset 0 0 0 1px rgba(0,0,0,.07), inset 0 2px 4px rgba(0,0,0,.06); }
