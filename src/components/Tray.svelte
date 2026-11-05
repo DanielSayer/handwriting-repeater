@@ -43,6 +43,9 @@
     <button class="btn icon" on:click={onRedo} disabled={!canRedo} aria-label="Redo" title="Redo">
       <Icon name="redo" />
     </button>
+    <button class="btn clear" on:click={onClear} disabled={!canClear} title="Clean the board">
+      <Icon name="eraser" /><span class="lbl">Clear</span>
+    </button>
   </div>
 
   <div class="grp" role="group" aria-label="Pen">
@@ -97,10 +100,6 @@
       </button>
     {/each}
   </div>
-
-  <button class="btn" on:click={onClear} disabled={!canClear} title="Clean the board">
-    <Icon name="eraser" /><span class="lbl">Clear</span>
-  </button>
 
   <span class="grow"></span>
 
@@ -246,7 +245,7 @@
       clip: rect(0 0 0 0);
       white-space: nowrap;
     }
-    .tray > .btn,
+    .clear,
     .replay .tog {
       padding: 0;
     }
