@@ -98,8 +98,8 @@
     {/each}
   </div>
 
-  <button class="btn" on:click={onClear} disabled={!canClear} title="Wipe the board clean">
-    <Icon name="eraser" /><span class="lbl">Wipe</span>
+  <button class="btn" on:click={onClear} disabled={!canClear} title="Clean the board">
+    <Icon name="eraser" /><span class="lbl">Clear</span>
   </button>
 
   <span class="grow"></span>
