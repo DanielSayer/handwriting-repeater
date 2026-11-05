@@ -280,7 +280,7 @@
       <Icon name="feedback" /><span class="lbl">Feedback</span>
     </a>
     <button
-      class="btn icon"
+      class="btn icon fullscreen"
       disabled={!fullscreenSupported}
       aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
       title={fullscreenSupported
@@ -483,6 +483,9 @@
     }
     .logo {
       margin-right: 6px;
+    }
+    .fullscreen {
+      display: none;
     }
   }
 </style>

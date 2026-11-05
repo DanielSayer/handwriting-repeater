@@ -167,6 +167,7 @@
 <style>
   .tray {
     position: relative;
+    z-index: 20;
     left: 50%;
     width: max-content;
     min-width: calc(100% + 12px);

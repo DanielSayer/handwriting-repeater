@@ -545,4 +545,9 @@
       display: none;
     }
   }
+  @media (max-width: 559px) {
+    .zoom {
+      display: none;
+    }
+  }
 </style>
