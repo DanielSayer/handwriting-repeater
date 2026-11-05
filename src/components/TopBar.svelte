@@ -11,7 +11,6 @@
   export let backgroundImage: BoardBackground | null;
   export let backgroundOpacity: number;
   export let backgroundLoading: boolean;
-  export let backgroundError: string;
   export let hasGuide: boolean;
   export let timerActive: boolean;
   export let exporting: boolean;
@@ -205,7 +204,6 @@
           <small>or drop or paste one onto the board</small>
         </button>
       {/if}
-      {#if backgroundError}<p class="pop-error" role="status">{backgroundError}</p>{/if}
     </Popover>
 
     <Popover open={menu === 'timer'} label="Timer" onClose={() => (menu = null)} width={280}>

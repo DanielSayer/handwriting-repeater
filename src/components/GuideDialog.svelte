@@ -27,6 +27,7 @@
   $: fontReady = loaded.includes(guideFont);
   $: lineCount = Math.max(1, draftText.trim().split(/\r?\n/).length);
   $: maxRepeats = Math.max(1, Math.floor(8 / lineCount));
+  $: if (draftRepeatCount > maxRepeats) draftRepeatCount = maxRepeats;
 
   onMount(() => {
     // Preview every font in the list; the selected one first so the textarea is ready.

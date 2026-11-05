@@ -303,7 +303,6 @@
     bind:backgroundOpacity
     {backgroundImage}
     {backgroundLoading}
-    {backgroundError}
     hasGuide={Boolean(guideText)}
     timerActive={timer !== null}
     {exporting}
@@ -396,11 +395,16 @@
       />
     </div>
   </main>
-  {#if exportError}
+  {#if exportError || backgroundError}
     <div class="toast" role="alert">
-      <span>{exportError}</span>
-      <button class="btn icon" aria-label="Dismiss" on:click={() => (exportError = '')}
-        ><Icon name="close" size={18} /></button
+      <span>{exportError || backgroundError}</span>
+      <button
+        class="btn icon"
+        aria-label="Dismiss"
+        on:click={() => {
+          exportError = '';
+          backgroundError = '';
+        }}><Icon name="close" size={18} /></button
       >
     </div>
   {/if}
