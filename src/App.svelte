@@ -298,7 +298,7 @@
 </script>
 
 <svelte:head>
-  <title>Handwriting Repeater: Practise, Trace &amp; Replay | Repeat</title>
+  <title>Handwriting Repeater: Practise, Trace &amp; Replay</title>
 </svelte:head>
 
 <div class="app-shell">

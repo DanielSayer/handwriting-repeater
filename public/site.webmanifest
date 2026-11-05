@@ -1,23 +1,19 @@
 {
-  "name": "Repeat — handwriting whiteboard",
-  "short_name": "Repeat",
-  "description": "A private, browser-local canvas for practising and replaying handwriting.",
+  "name": "Handwriting Repeater",
+  "short_name": "Handwriting",
+  "description": "A private, browser-local whiteboard for practising and replaying handwriting.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#efebe0",
-  "theme_color": "#f4f1e8",
+  "background_color": "#e4e7eb",
+  "theme_color": "#e4e7eb",
   "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-512.png",
+      "src": "/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ]
 }
