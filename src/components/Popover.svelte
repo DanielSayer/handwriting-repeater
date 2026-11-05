@@ -15,9 +15,10 @@
 
   async function focusPanel(): Promise<void> {
     await tick();
-    panel
-      ?.querySelector<HTMLElement>('input, textarea, button[aria-pressed="true"], button')
-      ?.focus({ preventScroll: true });
+    const target =
+      panel?.querySelector<HTMLElement>('button[aria-pressed="true"]') ??
+      panel?.querySelector<HTMLElement>('button, input');
+    target?.focus({ preventScroll: true });
   }
 
   function closeAndRefocus(): void {
