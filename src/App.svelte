@@ -1,15 +1,13 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import AppHeader from './components/AppHeader.svelte';
   import BoardCanvas from './components/BoardCanvas.svelte';
   import BoardPersistence from './components/BoardPersistence.svelte';
   import GuideDialog from './components/GuideDialog.svelte';
-  import PageRail from './components/PageRail.svelte';
-  import PlaybackBar from './components/PlaybackBar.svelte';
-  import ToolRail from './components/ToolRail.svelte';
-  import TimerDialog from './components/TimerDialog.svelte';
+  import Icon from './components/Icon.svelte';
+  import TopBar from './components/TopBar.svelte';
+  import Tray from './components/Tray.svelte';
   import { captureEvent, captureException } from './lib/analytics';
-  import { DEFAULT_BOARD_STATE } from './lib/constants';
+  import { DEFAULT_BOARD_STATE, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './lib/constants';
   import { prepareBackgroundImage } from './lib/backgroundImage';
   import {
     createReplaySchedule,
@@ -52,7 +50,6 @@
   let replayNonce = 0;
   let replayTimer: ReturnType<typeof setTimeout> | undefined;
   let guideDialogOpen = false;
-  let timerDialogOpen = false;
   let timer: { startedAt: number; durationMinutes: number } | null = null;
   let exporting = false;
   let exportError = '';
@@ -283,7 +280,6 @@
 
   function startTimer(durationMinutes: number): void {
     timer = { startedAt: Date.now(), durationMinutes };
-    timerDialogOpen = false;
     captureEvent('timer_started', { duration_minutes: durationMinutes });
   }
 
@@ -291,9 +287,8 @@
     timer = null;
   }
 
-  function handleTimerAction(): void {
-    if (timer) cancelTimer();
-    else timerDialogOpen = true;
+  function changeZoom(direction: 1 | -1): void {
+    zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom + direction * ZOOM_STEP));
   }
 </script>
 
@@ -302,87 +297,113 @@
 </svelte:head>
 
 <div class="app-shell">
-  <AppHeader />
+  <TopBar
+    bind:lineStyle
+    bind:pageColour
+    bind:backgroundOpacity
+    {backgroundImage}
+    {backgroundLoading}
+    {backgroundError}
+    hasGuide={Boolean(guideText)}
+    timerActive={timer !== null}
+    {exporting}
+    canExport={strokes.length > 0}
+    onOpenGuide={() => (guideDialogOpen = true)}
+    onBackgroundSelected={(file) => void setBackground(file)}
+    onRemoveBackground={removeBackground}
+    onStartTimer={startTimer}
+    onCancelTimer={cancelTimer}
+    onExport={exportBoard}
+  />
   <BoardPersistence state={persistedState} onRestore={restoreBoard} />
-  <main class="workspace">
-    <ToolRail
-      bind:penType
-      bind:penSize
-      bind:penColour
-      bind:traceMode
-      bind:loopMode
-      canUndo={strokes.length > 0}
-      canRedo={redoStack.length > 0}
-      canClear={strokes.length > 0 || Boolean(guideText)}
-      timerActive={timer !== null}
-      onUndo={undo}
-      onRedo={redo}
-      onClear={clearBoard}
-      onTimerClick={handleTimerAction}
-    />
-
-    <section class="board-column" aria-label="Drawing workspace">
-      <BoardCanvas
-        {strokes}
-        {penColour}
-        {penSize}
-        {penType}
-        {pageColour}
-        {lineStyle}
-        {zoom}
-        {traceMode}
-        {replaying}
-        {replayNonce}
-        {playbackRate}
-        {guideText}
-        {repeatCount}
-        bind:guideSize
-        bind:guideLayout
-        {guideFont}
-        bind:editingGuide
-        {backgroundImage}
-        {backgroundOpacity}
-        {timer}
-        onStrokeComplete={addStroke}
-        onResize={(width, height) => {
-          boardWidth = width;
-          boardHeight = height;
-        }}
-        onBackgroundSelected={(file) => void setBackground(file)}
-        onBackgroundError={reportBackgroundSelectionError}
-      />
-      <PlaybackBar
-        bind:zoom
+  <main class="wrap">
+    <div class="unit">
+      <section class="frame" aria-label="Whiteboard">
+        <div class="board">
+          <BoardCanvas
+            {strokes}
+            {penColour}
+            {penSize}
+            {penType}
+            {pageColour}
+            {lineStyle}
+            {zoom}
+            {traceMode}
+            {replaying}
+            {replayNonce}
+            {playbackRate}
+            {guideText}
+            {repeatCount}
+            bind:guideSize
+            bind:guideLayout
+            {guideFont}
+            bind:editingGuide
+            {backgroundImage}
+            {backgroundOpacity}
+            {timer}
+            onStrokeComplete={addStroke}
+            onResize={(width, height) => {
+              boardWidth = width;
+              boardHeight = height;
+            }}
+            onBackgroundSelected={(file) => void setBackground(file)}
+            onBackgroundError={reportBackgroundSelectionError}
+          />
+          {#if editingGuide}
+            <div class="guide-edit" role="status">
+              <Icon name="move" size={18} />
+              <span>Drag to move. Drag the corner to resize.</span>
+              <button class="btn sel" on:click={() => (editingGuide = false)}>Done</button>
+            </div>
+          {/if}
+          <div class="zoom" role="group" aria-label="Zoom">
+            <button
+              class="btn icon"
+              aria-label="Zoom out"
+              title="Zoom out"
+              disabled={zoom <= ZOOM_MIN}
+              on:click={() => changeZoom(-1)}><Icon name="minus" size={18} /></button
+            >
+            <span aria-live="polite">{Math.round(zoom * 100)}%</span>
+            <button
+              class="btn icon"
+              aria-label="Zoom in"
+              title="Zoom in"
+              disabled={zoom >= ZOOM_MAX}
+              on:click={() => changeZoom(1)}><Icon name="plus" size={18} /></button
+            >
+          </div>
+        </div>
+      </section>
+      <div class="lip" aria-hidden="true"></div>
+      <Tray
+        bind:penType
+        bind:penSize
+        bind:penColour
+        bind:traceMode
+        bind:loopMode
         bind:speed
-        {replaying}
+        canUndo={strokes.length > 0}
+        canRedo={redoStack.length > 0}
+        canClear={strokes.length > 0 || Boolean(guideText)}
         canReplay={strokes.length > 0}
+        {replaying}
+        onUndo={undo}
+        onRedo={redo}
+        onClear={clearBoard}
         onReplay={() => void replay()}
         onStop={stopReplay}
       />
-    </section>
-
-    <PageRail
-      bind:lineStyle
-      bind:pageColour
-      bind:backgroundOpacity
-      {backgroundImage}
-      {backgroundLoading}
-      {backgroundError}
-      {exporting}
-      {loopMode}
-      {exportError}
-      onOpenGuide={() => (guideDialogOpen = true)}
-      hasGuide={Boolean(guideText)}
-      {editingGuide}
-      onAdjustGuide={() => {
-        stopReplay();
-        editingGuide = !editingGuide;
-      }}
-      onExport={exportBoard}
-      onBackgroundSelected={(file) => void setBackground(file)}
-      onRemoveBackground={removeBackground}
-    />
+    </div>
   </main>
+  {#if exportError}
+    <div class="toast" role="alert">
+      <span>{exportError}</span>
+      <button class="btn icon" aria-label="Dismiss" on:click={() => (exportError = '')}
+        ><Icon name="close" size={18} /></button
+      >
+    </div>
+  {/if}
 </div>
 
 {#if guideDialogOpen}
@@ -393,75 +414,135 @@
     {guideSize}
     onClose={() => (guideDialogOpen = false)}
     onPlace={placeGuide}
+    onAdjust={() => {
+      guideDialogOpen = false;
+      stopReplay();
+      editingGuide = true;
+    }}
   />
-{/if}
-
-{#if timerDialogOpen}
-  <TimerDialog onClose={() => (timerDialogOpen = false)} onStart={startTimer} />
 {/if}
 
 <style>
   .app-shell {
     height: 100vh;
+    display: grid;
+    grid-template-rows: 56px minmax(0, 1fr);
+    padding: 0 16px 12px;
+    background: var(--wall);
+  }
+  /* Fit the framed 12:7 board plus its 72px lip and tray into the space that is left. */
+  .wrap {
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    container-type: size;
+  }
+  .unit {
+    --w: min(calc(100cqw - 16px), calc((100cqh - 14px - 72px) * 12 / 7));
+    width: calc(var(--w) + 16px);
+  }
+  .frame {
+    padding: 8px 8px 6px;
+    border-radius: 12px 12px 3px 3px;
+    background: linear-gradient(#dce1e6, #c4cbd3);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.08),
+      0 1px 2px rgba(29, 36, 51, 0.14),
+      0 8px 24px rgba(29, 36, 51, 0.08);
+  }
+  .board {
+    position: relative;
+    width: var(--w);
+    aspect-ratio: 12 / 7;
+    display: grid;
+  }
+  .lip {
+    height: 8px;
+    margin: 0 -6px;
+    border-radius: 0 0 4px 4px;
+    background: linear-gradient(#b9c1ca, #d3d9df);
+    box-shadow: inset 0 2px 2px rgba(0, 0, 0, 0.18);
+  }
+  .zoom {
+    position: absolute;
+    z-index: 8;
+    right: 12px;
+    bottom: 12px;
     display: flex;
-    flex-direction: column;
-    background-color: var(--desk);
-    background-image:
-      radial-gradient(#d5cebd 1px, transparent 1.2px),
-      linear-gradient(104deg, transparent 49.8%, rgba(255, 255, 255, 0.28) 50%, transparent 50.2%);
-    background-size:
-      24px 24px,
-      180px 180px;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
   }
-  .workspace {
-    min-height: 0;
-    flex: 1;
-    display: grid;
-    grid-template-columns: 168px minmax(0, 1fr) 224px;
-    gap: 16px;
-    padding: 16px;
+  .zoom span {
+    min-width: 42px;
+    text-align: center;
   }
-  .board-column {
-    min-width: 0;
-    min-height: 0;
-    display: grid;
-    grid-template-rows: minmax(0, 1fr) auto;
-    gap: 12px;
+  .guide-edit {
+    position: absolute;
+    z-index: 8;
+    top: 12px;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 4px 4px 14px;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: var(--shadow-pop);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    transform: translateX(-50%);
   }
-  @media (min-width: 1400px) {
-    .workspace {
-      grid-template-columns: 208px minmax(0, 1fr) 272px;
-      gap: 20px;
-      padding: 20px;
-    }
-    .board-column {
-      gap: 16px;
-    }
+  .toast {
+    position: fixed;
+    z-index: 40;
+    top: 64px;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 4px 4px 16px;
+    border-radius: 14px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: var(--shadow-pop);
+    transform: translateX(-50%);
+  }
+  .toast .btn {
+    color: #fff;
+  }
+  .toast .btn:hover {
+    background: rgba(255, 255, 255, 0.12);
   }
 
-  @media (max-width: 1199px) {
+  @media (max-width: 959px) {
     .app-shell {
-      min-height: 100vh;
       height: auto;
+      min-height: 100vh;
+      padding: 0 8px 12px;
     }
-    .workspace {
-      min-height: calc(100vh - 60px);
-      grid-template-columns: 104px minmax(0, 1fr);
+    .wrap {
+      container-type: normal;
+      align-content: start;
     }
-    .board-column {
-      min-height: 0;
-      align-self: center;
-      grid-template-rows: auto auto;
+    .unit,
+    .board {
+      width: 100%;
     }
-  }
-  @media (max-width: 620px) {
-    .workspace {
-      grid-template-columns: 1fr;
-      padding: 10px;
-      gap: 10px;
-    }
-    .board-column {
-      grid-row: 2;
+    .guide-edit span {
+      display: none;
     }
   }
 </style>

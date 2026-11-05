@@ -122,12 +122,12 @@
     on:pointercancel={stopDrag}
     on:keydown={moveWithKeyboard}
   >
-    <Icon name="drag" size={13} />
-    <span>Drag timer</span>
+    <Icon name="move" size={16} />
+    <span>Move</span>
   </button>
   <div class="timer-face" aria-hidden="true">
     <div class="timer-centre">
-      <span>Time remaining</span>
+      <span>Time left</span>
       <strong>{snapshot.remainingMinutes}</strong>
       <small>{minuteLabel}</small>
     </div>
@@ -144,109 +144,83 @@
     z-index: 10;
     top: 0;
     left: 0;
-    width: 198px;
-    padding: 10px 12px 15px;
-    border: 1.5px solid var(--line);
-    border-radius: 12px 16px 11px 15px;
-    background-color: rgba(255, 254, 250, 0.98);
-    background-image: radial-gradient(rgba(37, 48, 68, 0.08) 0.6px, transparent 0.7px);
-    background-size: 7px 7px;
-    box-shadow: var(--shadow-panel);
+    width: 168px;
+    padding: 6px 12px 14px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow:
+      0 4px 14px rgba(29, 36, 51, 0.14),
+      0 0 0 1px rgba(29, 36, 51, 0.06);
     user-select: none;
     will-change: transform;
   }
   .timer-widget.dragging {
     box-shadow:
-      5px 7px 0 rgba(37, 48, 68, 0.1),
-      0 15px 30px rgba(37, 48, 68, 0.14);
+      0 14px 30px rgba(29, 36, 51, 0.2),
+      0 0 0 1px rgba(29, 36, 51, 0.06);
   }
   .drag-label {
     width: 100%;
+    min-height: 32px;
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 5px;
-    margin-bottom: 8px;
-    color: var(--muted);
+    gap: 6px;
+    margin-bottom: 6px;
     border: 0;
+    border-radius: 8px;
     background: transparent;
-    font: 700 11px var(--hand);
-    letter-spacing: 0.02em;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
     cursor: grab;
     touch-action: none;
   }
-  .drag-label:focus-visible {
-    border-radius: 5px;
-    outline: 2px solid var(--ink);
-    outline-offset: 2px;
+  .drag-label:hover {
+    background: var(--hover);
   }
   .dragging .drag-label {
     cursor: grabbing;
   }
   .timer-face {
     position: relative;
-    width: 158px;
+    width: 132px;
     aspect-ratio: 1;
     display: grid;
     place-items: center;
     margin: 0 auto;
-    border: 5px solid var(--paper);
-    border-radius: 49% 51% 48% 52%;
-    background: conic-gradient(
-      from 0deg,
-      var(--accent) 0deg var(--remaining-angle),
-      #e3ded2 var(--remaining-angle) 360deg
-    );
-    box-shadow:
-      inset 0 0 0 1.5px rgba(37, 48, 68, 0.45),
-      2px 3px 0 #cfc7b7,
-      0 0 0 1.5px var(--ink);
-    transform: rotate(-0.7deg);
-  }
-  .timer-face::before {
-    position: absolute;
-    content: '';
-    inset: 4px;
     border-radius: 50%;
-    background: repeating-conic-gradient(var(--ink) 0deg 1deg, transparent 1deg 30deg);
-    opacity: 0.45;
-    mask: radial-gradient(transparent 0 83%, #000 84% 88%, transparent 89%);
-    pointer-events: none;
+    background: conic-gradient(
+      var(--blue) 0deg var(--remaining-angle),
+      #e3e7eb var(--remaining-angle) 360deg
+    );
   }
   .timer-centre {
-    position: relative;
-    z-index: 1;
-    width: 102px;
+    width: 108px;
     aspect-ratio: 1;
     display: grid;
     align-content: center;
     justify-items: center;
-    border: 1px solid var(--line);
-    border-radius: 51% 49% 52% 48%;
-    background: var(--paper);
+    border-radius: 50%;
+    background: #fff;
     color: var(--ink);
-    box-shadow: 1px 2px 0 rgba(37, 48, 68, 0.12);
     text-align: center;
-    transform: rotate(0.7deg);
   }
   .timer-centre span {
-    max-width: 74px;
     color: var(--muted);
-    font-family: var(--hand);
-    font-size: 10px;
-    font-weight: 750;
-    line-height: 1.15;
-    letter-spacing: 0.02em;
+    font-size: 12px;
+    font-weight: 600;
   }
   .timer-centre strong {
-    margin-top: 3px;
-    font: 700 36px/0.95 var(--hand);
+    font-size: 38px;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
   }
   .timer-centre small {
-    margin-top: 2px;
     color: var(--muted);
-    font-size: 10px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
   }
   .screen-reader-time {
     position: absolute;
@@ -262,17 +236,16 @@
 
   @media (max-width: 620px) {
     .timer-widget {
-      width: 166px;
-      padding: 8px 9px 11px;
+      width: 140px;
     }
     .timer-face {
-      width: 134px;
+      width: 108px;
     }
     .timer-centre {
       width: 88px;
     }
     .timer-centre strong {
-      font-size: 29px;
+      font-size: 30px;
     }
   }
 </style>

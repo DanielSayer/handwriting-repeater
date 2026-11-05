@@ -1,4 +1,4 @@
-import { DEFAULT_BOARD_STATE, STORAGE_KEY } from './constants';
+import { DEFAULT_BOARD_STATE, STORAGE_KEY, ZOOM_MAX, ZOOM_MIN, migrateColour } from './constants';
 import { isGuideFont } from './guideFonts';
 import type { BoardStroke, PersistedBoardState, Point } from './types';
 
@@ -59,8 +59,8 @@ export function parseBoardState(value: unknown): PersistedBoardState {
   ) {
     state.backgroundImage = { src: value.backgroundImage.src, name: value.backgroundImage.name };
   }
-  if (colour(value.penColour)) state.penColour = value.penColour;
-  if (colour(value.pageColour)) state.pageColour = value.pageColour;
+  if (colour(value.penColour)) state.penColour = migrateColour(value.penColour);
+  if (colour(value.pageColour)) state.pageColour = migrateColour(value.pageColour);
   if (value.penType === 'marker' || value.penType === 'pencil') state.penType = value.penType;
   if (
     value.lineStyle === 'ruled' ||
@@ -72,7 +72,7 @@ export function parseBoardState(value: unknown): PersistedBoardState {
   if (numberInRange(value.penSize, 1, 100)) state.penSize = value.penSize;
   if (numberInRange(value.backgroundOpacity, 0, 1))
     state.backgroundOpacity = value.backgroundOpacity;
-  if (numberInRange(value.zoom, 0.8, 1.25)) state.zoom = value.zoom;
+  if (numberInRange(value.zoom, ZOOM_MIN, ZOOM_MAX)) state.zoom = value.zoom;
   if (numberInRange(value.speed, -1, 5)) state.speed = value.speed;
   if (numberInRange(value.repeatCount, 1, 8)) state.repeatCount = Math.round(value.repeatCount);
   if (numberInRange(value.guideSize, 12, 160)) state.guideSize = value.guideSize;

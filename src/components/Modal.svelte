@@ -53,24 +53,21 @@
 
 <style>
   dialog {
-    width: min(var(--dialog-width), calc(100% - 40px));
-    max-height: calc(100% - 40px);
-    padding: 22px;
-    border: 1.5px solid var(--line);
-    border-radius: 14px 18px 13px 17px;
-    background: var(--panel);
-    color: var(--ink);
-    box-shadow:
-      5px 6px 0 rgba(37, 48, 68, 0.12),
-      0 24px 60px rgba(30, 36, 48, 0.2);
+    width: min(var(--dialog-width), calc(100% - 32px));
+    max-height: calc(100% - 32px);
+    padding: 20px;
+    border: 0;
+    border-radius: 18px;
+    background: #fff;
+    color: var(--text);
+    box-shadow: 0 24px 60px rgba(29, 36, 51, 0.24);
   }
   dialog::backdrop {
-    background: rgba(30, 36, 48, 0.32);
-    backdrop-filter: blur(2px);
+    background: rgba(29, 36, 51, 0.32);
   }
   @media (max-width: 620px) {
     dialog {
-      padding: 18px;
+      padding: 16px;
     }
   }
 </style>

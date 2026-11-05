@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import Dropzone from 'svelte-file-dropzone';
   import StrokeLayer from './StrokeLayer.svelte';
-  import Icon from './Icon.svelte';
   import TimerWidget from './TimerWidget.svelte';
   import { BACKGROUND_IMAGE_ACCEPT, MAX_BACKGROUND_FILE_SIZE } from '../lib/backgroundImage';
   import { BOARD_ASPECT_RATIO, BOARD_HEIGHT, BOARD_WIDTH } from '../lib/constants';
@@ -364,7 +363,7 @@
   }
 </script>
 
-<div class="canvas-workspace" class:font-error={fontError}>
+<div class="canvas-workspace">
   {#if fontError}
     <p class="font-warning" role="status">
       The guide font could not load. <button on:click={() => requestFont(guideFont)}>Retry</button>
@@ -403,7 +402,7 @@
               style={`opacity:${backgroundOpacity}`}
             />
           {/if}
-          <div class="paper-grain"></div>
+          <div class="sheen"></div>
           <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions (the drawing application handles pointer gestures, keyboard guide adjustment and clipboard paste) -->
           <svg
             class="drawing-layer"
@@ -445,8 +444,8 @@
                   width={bounds.width + 10}
                   height={bounds.height + 10}
                   fill="transparent"
-                  stroke="var(--ink)"
-                  stroke-width="1.5"
+                  stroke="var(--blue)"
+                  stroke-width="2"
                   vector-effect="non-scaling-stroke"
                   stroke-dasharray="5 3"
                   style="cursor:move"
@@ -458,8 +457,8 @@
                   width={handleSize}
                   height={handleSize}
                   rx="5"
-                  fill="var(--ink)"
-                  stroke="var(--paper)"
+                  fill="var(--blue)"
+                  stroke="#fff"
                   stroke-width="2"
                   vector-effect="non-scaling-stroke"
                   style="cursor:nwse-resize"
@@ -480,14 +479,13 @@
           </svg>
           {#if !strokes.length && !guideText && !backgroundImage}
             <div class="empty-prompt" aria-hidden="true">
-              <Icon name="marker" size={30} />
-              <p>Write something here</p>
-              <small>Draw, drop an image, or paste one with Ctrl+V</small>
+              <p>Start writing anywhere</p>
+              <small>Or drop a picture here to trace it</small>
             </div>
           {/if}
           {#if backgroundDragActive}
             <div class="drop-prompt" aria-hidden="true">
-              <strong>Drop image to trace</strong>
+              <strong>Drop the picture to trace it</strong>
               <span>PNG, JPEG, or WebP</span>
             </div>
           {/if}
@@ -502,24 +500,39 @@
 
 <style>
   .canvas-workspace {
+    position: relative;
+    width: 100%;
+    height: 100%;
     min-width: 0;
     min-height: 0;
     display: grid;
     grid-template-rows: minmax(0, 1fr);
   }
-  .canvas-workspace.font-error {
-    grid-template-rows: auto minmax(0, 1fr);
-  }
   .font-warning {
-    margin: 0 0 8px;
-    color: var(--muted);
-    font-size: 12px;
+    position: absolute;
+    z-index: 12;
+    top: 10px;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 6px 6px 6px 14px;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: var(--shadow-pop);
+    color: var(--text);
+    font-size: 14px;
+    transform: translateX(-50%);
   }
   .font-warning button {
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 5px 10px;
+    min-height: 36px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--blue);
+    color: #fff;
+    font-weight: 700;
     cursor: pointer;
   }
   .guide-selection {
@@ -536,21 +549,18 @@
   .board-viewport {
     position: relative;
     overflow: hidden;
-    border: 1.5px solid var(--line);
-    border-radius: 14px 18px 13px 16px;
-    background: #e2ddd0;
-    box-shadow: var(--shadow-panel);
+    border-radius: 5px;
+    background: #e9ecef;
   }
   :global(.canvas-dropzone) {
     min-height: 0;
     display: grid;
   }
   .background-drag-active {
-    border-color: var(--ink);
-    box-shadow: 0 0 0 3px rgba(30, 36, 48, 0.15);
+    box-shadow: 0 0 0 3px var(--blue);
   }
   .paper {
-    --paper: #fffdf7;
+    --paper: #fcfdfd;
     --zoom: 1;
     position: absolute;
     top: 50%;
@@ -562,11 +572,10 @@
     touch-action: none;
     cursor: crosshair;
     outline: none;
-    box-shadow: inset 0 0 0 1px rgba(37, 48, 68, 0.04);
   }
   .drawing-layer:focus-visible {
-    outline: 2px solid var(--ink);
-    outline-offset: -2px;
+    outline: 3px solid var(--blue);
+    outline-offset: -3px;
   }
   .background-image {
     position: absolute;
@@ -578,14 +587,21 @@
     pointer-events: none;
     user-select: none;
   }
-  .paper-grain {
+  /* Faint gloss and inner edge so the surface reads as a whiteboard, not paper. */
+  .sheen {
     position: absolute;
     z-index: 2;
     inset: 0;
     pointer-events: none;
-    opacity: 0.23;
-    background-image: radial-gradient(#9e9a8f 0.55px, transparent 0.7px);
-    background-size: 7px 7px;
+    background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0) 45%,
+      rgba(0, 0, 0, 0.018) 100%
+    );
+    box-shadow:
+      inset 0 0 0 1px rgba(0, 0, 0, 0.07),
+      inset 0 2px 4px rgba(0, 0, 0, 0.06);
   }
   .paper.lines-ruled {
     background-image: repeating-linear-gradient(
@@ -608,12 +624,10 @@
   }
   .drawing-layer {
     position: absolute;
+    z-index: 4;
     inset: 0;
     width: 100%;
     height: 100%;
-  }
-  .drawing-layer {
-    z-index: 4;
     user-select: none;
   }
   .empty-prompt {
@@ -623,18 +637,25 @@
     display: grid;
     place-content: center;
     justify-items: center;
+    gap: 6px;
     text-align: center;
-    color: #9aa0a8;
     pointer-events: none;
   }
   .empty-prompt p {
-    margin: 10px 0 4px;
-    font: 25px var(--hand);
-    color: #65707c;
-    transform: rotate(-1deg);
+    margin: 0;
+    padding: 2px 10px;
+    border-radius: 6px;
+    background: var(--paper);
+    color: #6b7382;
+    font-size: 24px;
+    font-weight: 600;
   }
   .empty-prompt small {
-    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: var(--paper);
+    color: #7a8291;
+    font-size: 16px;
   }
   .drop-prompt {
     position: absolute;
@@ -642,23 +663,23 @@
     inset: 18px;
     display: grid;
     place-content: center;
-    gap: 5px;
-    border: 2px dashed var(--ink);
-    border-radius: var(--radius-lg);
-    background: rgba(255, 253, 247, 0.92);
+    gap: 6px;
+    border: 3px dashed var(--blue);
+    border-radius: 14px;
+    background: rgba(243, 247, 254, 0.94);
     color: var(--ink);
     text-align: center;
     pointer-events: none;
   }
   .drop-prompt strong {
-    font-size: 18px;
+    font-size: 26px;
   }
   .drop-prompt span {
-    font-size: 11px;
     color: var(--muted);
+    font-size: 16px;
   }
 
-  @media (max-width: 1199px) {
+  @media (max-width: 959px) {
     :global(.canvas-dropzone) {
       aspect-ratio: 12 / 7;
     }

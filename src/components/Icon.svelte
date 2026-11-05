@@ -1,99 +1,65 @@
-<script lang="ts">
-  export let name:
-    | 'marker'
-    | 'pencil'
-    | 'trace'
-    | 'loop'
-    | 'undo'
-    | 'redo'
-    | 'clear'
-    | 'image'
-    | 'download'
-    | 'type'
-    | 'play'
-    | 'stop'
-    | 'fullscreen'
-    | 'exit-fullscreen'
-    | 'clock'
-    | 'drag'
-    | 'check'
-    | 'close';
-  export let size = 18;
+<script lang="ts" context="module">
+  const PATHS = {
+    undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+    redo: '<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
+    eraser:
+      '<path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l9.6-9.6a1 1 0 0 1 1.4 0l5.6 5.6a1 1 0 0 1 0 1.4L11 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>',
+    marker:
+      '<path d="M15.5 3.5a2.1 2.1 0 0 1 3 3L8 17l-4 1 1-4Z"/><path d="M13 6l3 3"/><path d="M4 21h7" stroke-width="3"/>',
+    pencil: '<path d="M17 3l4 4L8 20H4v-4Z"/><path d="M4 16l4 4"/><path d="M14 6l4 4"/>',
+    ghost:
+      '<path d="M3 17c3-6 5-6 7 0s4 6 7 0" stroke-dasharray="2.5 3"/><path d="M3 11c3-6 5-6 7 0s4 6 7 0"/>',
+    loop: '<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>',
+    timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M9 2h6"/>',
+    type: '<path d="M4 7V4h16v3"/><path d="M12 4v16"/><path d="M9 20h6"/>',
+    move: '<path d="M12 2v20M2 12h20"/><path d="m9 5 3-3 3 3M9 19l3 3 3-3M5 9l-3 3 3 3M19 9l3 3-3 3"/>',
+    lines: '<path d="M3 6h18M3 12h18M3 18h18"/>',
+    image:
+      '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+    download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+    play: '<path d="M7 4v16l13-8Z" fill="currentColor"/>',
+    stop: '<rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/>',
+    fullscreen:
+      '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>',
+    'exit-fullscreen':
+      '<path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/>',
+    feedback: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    minus: '<path d="M5 12h14"/>',
+    chev: '<path d="m6 9 6 6 6-6"/>',
+    speed: '<path d="M12 14l4-4"/><path d="M3.3 19A10 10 0 1 1 20.7 19"/>',
+    check: '<path d="M5 12l5 5 9-10"/>',
+    close: '<path d="M6 6l12 12M18 6 6 18"/>',
+    trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>'
+  } as const;
+
+  export type IconName = keyof typeof PATHS;
 </script>
 
-<!-- Original loose-line icons drawn for Repeat, inspired by Streamline's Freehand set. -->
+<script lang="ts">
+  export let name: IconName;
+  export let size = 20;
+</script>
+
 <svg
-  class="scribble-icon"
-  viewBox="0 0 48 48"
+  class="icon"
+  viewBox="0 0 24 24"
   width={size}
   height={size}
   fill="none"
   stroke="currentColor"
-  stroke-width="3.4"
+  stroke-width="2"
   stroke-linecap="round"
   stroke-linejoin="round"
   aria-hidden="true"
 >
-  {#if name === 'marker'}
-    <path d="M9 39c2-5 3-9 6-12L31 9c2-2 5-1 7 1 2 3 2 5 0 7L21 35c-3 2-7 3-12 4Z" />
-    <path d="m28 13 7 7M14 29c3 0 5 2 7 5M10 39l7-3" />
-  {:else if name === 'pencil'}
-    <path d="m8 39 3-11L30 8c2-2 5-1 8 2 2 2 2 5 0 7L18 37 8 39Z" />
-    <path d="m27 12 8 8M11 29c3 1 5 3 7 7M8 39l7-3" />
-  {:else if name === 'trace'}
-    <path d="M5 16c4-7 8-7 12 0s8 7 12 0 8-7 14-1" />
-    <path d="M5 33c4-7 8-7 12 0s8 7 12 0 8-7 14-1" />
-    <path d="M7 20c8 2 23 1 34-2" opacity=".42" />
-  {:else if name === 'loop'}
-    <path d="M38 18c-3-7-11-11-19-8C9 13 6 24 11 33c5 8 17 9 24 3 3-3 4-6 4-10" />
-    <path d="m32 12 7 6 1-10" />
-  {:else if name === 'undo'}
-    <path d="M18 15 8 23l10 7" />
-    <path d="M9 23c10-3 24-4 29 5 3 6-1 11-6 13" />
-  {:else if name === 'redo'}
-    <path d="m30 15 10 8-10 7" />
-    <path d="M39 23c-10-3-24-4-29 5-3 6 1 11 6 13" />
-  {:else if name === 'clear'}
-    <path d="M8 14c8 1 22-1 32 0M17 13l1-5c5-1 9-1 13 0l1 5" />
-    <path d="M12 16c1 8 1 16 3 24 6 1 13 0 19-1 2-8 2-15 2-23" />
-    <path d="m21 21 1 12m7-12-1 12" />
-  {:else if name === 'image'}
-    <path d="M8 9c9-1 21 0 31 1 1 9 1 20 0 29-10 1-21 1-31-1-1-9-1-19 0-29Z" />
-    <path d="M10 34 19 24l8 8 5-6 7 8" />
-    <path d="M30 17c0 3-4 5-6 3-3-2-1-6 2-7 2 0 4 1 4 4Z" />
-  {:else if name === 'download'}
-    <path d="M24 7c0 10-1 19 0 27" />
-    <path d="m15 27 9 8 10-9" />
-    <path d="M8 41c10-1 22 1 32-1" />
-  {:else if name === 'type'}
-    <path d="M8 13c9-2 22-2 32 0M24 13c-1 10 0 18-1 27M16 40c6-1 11 1 17-1" />
-    <path d="m9 13-1 5m31-5 1 5" />
-  {:else if name === 'play'}
-    <path d="M15 8c8 5 16 10 24 17-8 6-16 11-24 15 1-11 0-21 0-32Z" />
-  {:else if name === 'stop'}
-    <path d="M12 12c8-1 16 0 24 1 1 7 0 15 0 23-8 1-16 1-24-1-1-7 0-15 0-23Z" />
-  {:else if name === 'fullscreen'}
-    <path d="M8 19c0-4 0-7 1-11 4 0 7 0 11 1M28 9c4-1 7-1 11 0 0 4 1 7 0 11" />
-    <path d="M9 28c-1 4-1 7 0 11 4 0 7 1 11 0M39 28c1 4 1 7 0 11-4 0-7 0-11 1" />
-  {:else if name === 'exit-fullscreen'}
-    <path d="M8 19c4 0 7 0 11-1 0-4 0-7 1-11M28 8c1 4 1 7 1 11 4 0 7 0 11 1" />
-    <path d="M8 29c4 0 7 0 11 1 0 4 0 7 1 11M28 40c1-4 1-7 1-11 4 0 7 0 11-1" />
-  {:else if name === 'clock'}
-    <path d="M24 7c10 0 17 7 17 17 0 11-7 17-17 17S7 34 7 24 14 7 24 7Z" />
-    <path d="M24 13c-1 5 0 9 0 12l8 5M12 24h2m20 0h2M24 35v2" />
-  {:else if name === 'drag'}
-    <path d="M17 13h.1M31 13h.1M17 24h.1M31 24h.1M17 35h.1M31 35h.1" stroke-width="5" />
-  {:else if name === 'check'}
-    <path d="M9 25c4 3 7 7 10 11 7-10 13-19 21-26" />
-  {:else if name === 'close'}
-    <path d="M10 9c9 10 18 20 29 30M39 9C29 18 20 29 9 39" />
-  {/if}
+  <!-- eslint-disable-next-line svelte/no-at-html-tags -- static, trusted icon paths -->
+  {@html PATHS[name]}
 </svg>
 
 <style>
-  .scribble-icon {
+  .icon {
     display: block;
-    overflow: visible;
-    transform: rotate(-1deg);
+    flex: none;
   }
 </style>
