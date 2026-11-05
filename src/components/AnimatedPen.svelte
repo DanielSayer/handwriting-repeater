@@ -15,7 +15,7 @@
   <path class="collar" d="M10-6 17-8 20 4 13 6Z" fill="#d7d8d6" />
   <path class="barrel" d="M17-8 62-8Q67-8 67-3V3Q67 8 62 8L17 6Z" />
   <path class="barrel-shine" d="M23-3H57" />
-  <path class="cap" d="M61-10H76Q80-10 80-6V6Q80 10 76 10H61Z" />
+  <path class="cap" fill={colour} d="M61-10H76Q80-10 80-6V6Q80 10 76 10H61Z" />
   <path class="cap-line" d="M67-8V8" />
 </g>
 
@@ -48,14 +48,13 @@
     opacity: 0.85;
   }
   .cap {
-    fill: #172138;
     stroke: #111820;
     stroke-width: 2.5;
     stroke-linejoin: round;
   }
   .cap-line {
-    stroke: #62708d;
+    stroke: #fff;
     stroke-width: 2;
-    opacity: 0.65;
+    opacity: 0.45;
   }
 </style>

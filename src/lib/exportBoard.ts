@@ -428,12 +428,12 @@ function drawAnimatedPen(
   context.stroke();
   context.globalAlpha = 1;
 
-  drawRoundedCap(context);
+  drawRoundedCap(context, stroke.colour);
   context.beginPath();
   context.moveTo(67, -8);
   context.lineTo(67, 8);
-  context.strokeStyle = '#62708d';
-  context.globalAlpha = 0.65;
+  context.strokeStyle = '#ffffff';
+  context.globalAlpha = 0.45;
   context.lineWidth = 2;
   context.stroke();
   context.restore();
@@ -481,7 +481,7 @@ function drawPolygon(
   context.stroke();
 }
 
-function drawRoundedCap(context: DrawingContext): void {
+function drawRoundedCap(context: DrawingContext, colour: string): void {
   context.beginPath();
   context.moveTo(61, -10);
   context.lineTo(76, -10);
@@ -490,7 +490,7 @@ function drawRoundedCap(context: DrawingContext): void {
   context.quadraticCurveTo(80, 10, 76, 10);
   context.lineTo(61, 10);
   context.closePath();
-  context.fillStyle = '#172138';
+  context.fillStyle = colour;
   context.strokeStyle = '#111820';
   context.lineWidth = 2.5;
   context.fill();

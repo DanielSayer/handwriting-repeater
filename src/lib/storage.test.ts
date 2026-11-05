@@ -43,8 +43,14 @@ describe('saved board validation', () => {
       ...DEFAULT_BOARD_STATE,
       strokes: [validStroke],
       guideText: 'keep this',
-      pageColour: '#edf7ff'
+      pageColour: '#eef6ff'
     });
+  });
+
+  it('maps colours saved by the previous palette to the new one', () => {
+    const board = parseBoardState({ penColour: '#EF6B4A', pageColour: '#fffdf7' });
+    expect(board.penColour).toBe('#d8392f');
+    expect(board.pageColour).toBe('#fcfdfd');
   });
 
   it('keeps strokes with duplicate IDs without crashing keyed rendering', () => {
