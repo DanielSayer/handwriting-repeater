@@ -1,21 +1,21 @@
-# Repeat
+# Handwriting Repeater
 
 [![CI](https://github.com/DanielSayer/handwriting-repeater/actions/workflows/ci.yml/badge.svg)](https://github.com/DanielSayer/handwriting-repeater/actions/workflows/ci.yml)
 
 **Practise your handwriting, then watch it come back to life.**
 
-Repeat is a free online whiteboard for handwriting practice. Write on the page, trace over letters or pictures, and then replay your writing stroke by stroke, at the speed you wrote it. When you're happy with it, save it as an animated GIF to share.
+Handwriting Repeater is a free online whiteboard for handwriting practice. Write on the board, trace over letters or pictures, and then replay your writing stroke by stroke, at the speed you wrote it. When you're happy with it, save it as an animated GIF to share.
 
 **[Try it at handwriting-repeater.com](https://www.handwriting-repeater.com/)**. Nothing to install, no account needed.
 
-![The Repeat whiteboard with traced letters](docs/images/hero.png)
+![The Handwriting Repeater whiteboard with guide letters and handwriting](docs/images/hero.png)
 
 ## What you can do
 
 - **Write naturally.** Use a marker or pencil and pick any colour and thickness.
-- **Practise with guides.** Turn on lined paper, or type a word and have it repeated across the page to copy. Drag guides around, resize them, and pick a handwriting font.
-- **Trace a picture.** Add a photo or worksheet behind the page and fade it so it's easy to trace.
-- **Watch it back.** Replay your writing at its real pace, speed it up or slow it down, or set it to loop.
+- **Practise with guides.** Turn on ruled lines, dots or a grid, or type a word and have it repeated across the page to copy. Drag guides around, resize them, and pick a handwriting font.
+- **Trace a picture.** Add a photo or worksheet behind the board and fade it so it's easy to trace.
+- **Watch it back.** Replay your writing at its real pace, speed it up or slow it down, or set it to loop. Turn on **Ghost** to keep a faint copy showing while it replays.
 - **Share it.** Save the replay as an animated GIF.
 - **Made for the classroom.** Built for desktop and laptop screens, so you can project it onto the class whiteboard and write live in front of students.
 
@@ -28,7 +28,7 @@ Great for teachers modelling letter formation, kids learning to write, and anyon
 
 ## Your work stays yours
 
-Repeat runs entirely in your browser. Your drawings and pictures are never uploaded anywhere. They're saved on your own device, so they'll still be there next time you open the site in the same browser.
+Handwriting Repeater runs entirely in your browser. Your drawings and pictures are never uploaded anywhere. They're saved on your own device, so they'll still be there next time you open the site in the same browser.
 
 Keep in mind:
 
