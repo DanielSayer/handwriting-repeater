@@ -8,6 +8,8 @@ const target = document.getElementById('app');
 if (!target) throw new Error('Application root was not found.');
 
 mount(App, { target });
+// Static no-JS/crawler content in index.html; the app replaces it.
+document.getElementById('static-intro')?.remove();
 
 // Give the board a paint before downloading or initialising optional analytics.
 requestAnimationFrame(() => {
