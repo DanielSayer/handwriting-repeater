@@ -1,0 +1,30 @@
+# Handwriting Repeater
+
+> Free online handwriting practice whiteboard. Write or trace letters, replay your handwriting stroke by stroke, and save it as an animated GIF. Runs entirely in the browser: no install, no account, nothing uploaded.
+
+URL: https://www.handwriting-repeater.com/
+
+## Features
+
+- Write with a marker or pencil in any colour and thickness.
+- Guides: ruled lines, dots or a grid, or type a word and repeat it across the page to trace.
+- School handwriting fonts, including the Australian NSW/ACT Foundation, VIC/WA/NT Beginner and QLD Beginner (QBeginners) fonts, plus Patrick Hand, Caveat and Dancing Script.
+- Add a photo or worksheet behind the board and fade it to trace.
+- Replay writing at its real pace, faster or slower, or on a loop. Ghost mode keeps a faint copy visible during replay.
+- Export the replay as an animated GIF.
+- Classroom timer.
+- Built for desktop and laptop screens, so teachers can project it onto a classroom whiteboard and model letter formation live.
+
+## Who it's for
+
+Teachers modelling letter formation, children learning to write, and anyone practising their handwriting.
+
+## Privacy
+
+Drawings and pictures stay on the user's device and are never uploaded. Boards are saved in the browser, so clearing browser data deletes them and they don't sync between devices. Anonymous feature-usage analytics only; handwriting is never recorded.
+
+## Links
+
+- App: https://www.handwriting-repeater.com/
+- Source: https://github.com/DanielSayer/handwriting-repeater
+- Feedback: https://tally.so/r/J9NaAz

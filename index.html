@@ -5,18 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#e4e7eb" />
     <meta name="color-scheme" content="light" />
+    <script>
+      document.documentElement.classList.add('js');
+    </script>
+    <style>
+      .js .static-intro {
+        display: none;
+      }
+      .static-intro {
+        height: 100vh;
+        overflow: auto;
+        padding: 24px;
+        font-family: system-ui, sans-serif;
+        line-height: 1.5;
+        color: #1d2026;
+        background: #fcfdfd;
+      }
+      .static-intro > * {
+        max-width: 720px;
+        margin-inline: auto;
+      }
+    </style>
     <link rel="canonical" href="https://www.handwriting-repeater.com/" />
     <meta
       name="description"
-      content="Practise handwriting on a private, browser-local whiteboard. Add guides or images to trace, replay your strokes, and export an animated GIF."
+      content="Free online handwriting practice whiteboard for the classroom or home. Trace letters in school fonts, replay every stroke and save it as a GIF. No sign-up."
     />
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:locale:alternate" content="en_AU" />
     <meta property="og:url" content="https://www.handwriting-repeater.com/" />
     <meta property="og:site_name" content="Handwriting Repeater" />
-    <meta property="og:title" content="Handwriting Repeater: Practise, Trace &amp; Replay" />
+    <meta
+      property="og:title"
+      content="Free Handwriting Practice Whiteboard | Handwriting Repeater"
+    />
     <meta
       property="og:description"
-      content="Practise handwriting on a private, browser-local whiteboard. Add guides or images to trace, replay your strokes, and export an animated GIF."
+      content="Free online handwriting practice whiteboard for the classroom or home. Trace letters in school fonts, replay every stroke and save it as a GIF. No sign-up."
     />
     <meta property="og:image" content="https://www.handwriting-repeater.com/social-preview.png" />
     <meta property="og:image:type" content="image/png" />
@@ -27,10 +53,13 @@
       content="Handwriting Repeater whiteboard with practice letters and replay controls"
     />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Handwriting Repeater: Practise, Trace &amp; Replay" />
+    <meta
+      name="twitter:title"
+      content="Free Handwriting Practice Whiteboard | Handwriting Repeater"
+    />
     <meta
       name="twitter:description"
-      content="Practise handwriting on a private, browser-local whiteboard. Add guides or images to trace, replay your strokes, and export an animated GIF."
+      content="Free online handwriting practice whiteboard for the classroom or home. Trace letters in school fonts, replay every stroke and save it as a GIF. No sign-up."
     />
     <meta name="twitter:image" content="https://www.handwriting-repeater.com/social-preview.png" />
     <meta
@@ -40,10 +69,93 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "Handwriting Repeater",
-        "alternateName": "handwriting-repeater.com",
-        "url": "https://www.handwriting-repeater.com/"
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://www.handwriting-repeater.com/#website",
+            "name": "Handwriting Repeater",
+            "alternateName": "handwriting-repeater.com",
+            "url": "https://www.handwriting-repeater.com/",
+            "inLanguage": "en"
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://www.handwriting-repeater.com/#app",
+            "name": "Handwriting Repeater",
+            "url": "https://www.handwriting-repeater.com/",
+            "description": "A free online whiteboard for handwriting practice. Trace letters or pictures, replay your writing stroke by stroke, and save it as an animated GIF.",
+            "applicationCategory": "EducationalApplication",
+            "operatingSystem": "Any",
+            "browserRequirements": "Requires JavaScript and a modern web browser",
+            "isAccessibleForFree": true,
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP" },
+            "image": "https://www.handwriting-repeater.com/social-preview.png",
+            "screenshot": "https://www.handwriting-repeater.com/social-preview.png",
+            "audience": {
+              "@type": "EducationalAudience",
+              "educationalRole": ["teacher", "student", "parent"]
+            },
+            "featureList": [
+              "Write with a marker or pencil in any colour and thickness",
+              "Ruled lines, dots or grid backgrounds",
+              "Type a word and repeat it across the page as a tracing guide",
+              "School handwriting fonts, including the Australian NSW/ACT Foundation, VIC/WA/NT Beginner and QLD Beginner fonts",
+              "Add a photo or worksheet behind the board to trace",
+              "Replay handwriting stroke by stroke at the original pace, faster or slower, or on a loop",
+              "Ghost mode keeps a faint copy visible during replay",
+              "Export the replay as an animated GIF",
+              "Classroom timer",
+              "Works in the browser with no account; drawings stay on your device"
+            ],
+            "isPartOf": { "@id": "https://www.handwriting-repeater.com/#website" }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://www.handwriting-repeater.com/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Is Handwriting Repeater free?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. It is free to use, with nothing to install and no account needed."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is my handwriting uploaded anywhere?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Handwriting Repeater runs entirely in your browser. Drawings and pictures are saved on your own device and are never uploaded. Clearing your browser data deletes your saved board, and boards do not sync between browsers or devices."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Which handwriting fonts can I trace?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Type any word and pick a font to repeat it across the page as a tracing guide. Fonts include the Australian school fonts NSW/ACT Foundation, VIC/WA/NT Beginner and QLD Beginner (QBeginners), plus Patrick Hand, Caveat and Dancing Script."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I use it on a classroom interactive whiteboard?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. It is built for desktop and laptop screens, so you can project it onto a classroom whiteboard and model letter formation live in front of students."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I save my handwriting as a GIF?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Replay your writing stroke by stroke, then save the replay as an animated GIF to share."
+                }
+              }
+            ]
+          }
+        ]
       }
     </script>
     <link rel="icon" href="/favicon.svg" sizes="any" type="image/svg+xml" />
@@ -51,10 +163,74 @@
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <title>Handwriting Repeater: Practise, Trace &amp; Replay</title>
+    <title>Free Handwriting Practice Whiteboard | Handwriting Repeater</title>
   </head>
   <body>
     <div id="app"></div>
+    <!-- Shown when JavaScript is unavailable (and readable by crawlers that don't run it). Removed once the app mounts. -->
+    <article class="static-intro" id="static-intro">
+      <h1>Handwriting Repeater: free online handwriting practice whiteboard</h1>
+      <p>
+        Practise your handwriting, then watch it come back to life. Write on the board, trace over
+        letters or pictures, and replay your writing stroke by stroke at the speed you wrote it.
+        When you're happy with it, save it as an animated GIF to share. Nothing to install, no
+        account needed.
+      </p>
+
+      <h2>What you can do</h2>
+      <ul>
+        <li>
+          <strong>Write naturally.</strong> Use a marker or pencil in any colour and thickness.
+        </li>
+        <li>
+          <strong>Practise with guides.</strong> Turn on ruled lines, dots or a grid, or type a word
+          and have it repeated across the page to copy. Pick a school handwriting font, including
+          the Australian NSW/ACT Foundation, VIC/WA/NT Beginner and QLD Beginner fonts.
+        </li>
+        <li>
+          <strong>Trace a picture.</strong> Add a photo or worksheet behind the board and fade it so
+          it's easy to trace.
+        </li>
+        <li>
+          <strong>Watch it back.</strong> Replay your writing at its real pace, speed it up or slow
+          it down, or set it to loop. Turn on Ghost to keep a faint copy showing while it replays.
+        </li>
+        <li><strong>Share it.</strong> Save the replay as an animated GIF.</li>
+        <li>
+          <strong>Made for the classroom.</strong> Built for desktop and laptop screens, so you can
+          project it onto the class whiteboard and model letter formation live.
+        </li>
+      </ul>
+      <p>
+        Great for teachers modelling letter formation, children learning to write, and anyone
+        practising their handwriting.
+      </p>
+
+      <h2>Frequently asked questions</h2>
+      <h3>Is Handwriting Repeater free?</h3>
+      <p>Yes. It is free to use, with nothing to install and no account needed.</p>
+      <h3>Is my handwriting uploaded anywhere?</h3>
+      <p>
+        No. Handwriting Repeater runs entirely in your browser. Drawings and pictures are saved on
+        your own device and are never uploaded. Clearing your browser data deletes your saved board,
+        and boards don't sync between browsers or devices.
+      </p>
+      <h3>Which handwriting fonts can I trace?</h3>
+      <p>
+        Type any word and pick a font to repeat it across the page as a tracing guide. Fonts include
+        the Australian school fonts NSW/ACT Foundation, VIC/WA/NT Beginner and QLD Beginner
+        (QBeginners), plus Patrick Hand, Caveat and Dancing Script.
+      </p>
+      <h3>Can I use it on a classroom interactive whiteboard?</h3>
+      <p>
+        Yes. It's built for desktop and laptop screens, so you can project it onto a classroom
+        whiteboard and model letter formation live in front of students.
+      </p>
+      <h3>Can I save my handwriting as a GIF?</h3>
+      <p>Yes. Replay your writing stroke by stroke, then save the replay as an animated GIF.</p>
+
+      <p><strong>Handwriting Repeater needs JavaScript enabled to run.</strong></p>
+    </article>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
