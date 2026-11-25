@@ -13,15 +13,15 @@ Handwriting Repeater is a free online whiteboard for handwriting practice. Write
 ## What you can do
 
 - **Write naturally.** Use a marker or pencil and pick any colour and thickness.
-- **Practise with guides.** Turn on ruled lines, dots or a grid, or type a word and have it repeated across the page to copy. Drag guides around, resize them, and pick a handwriting font.
+- **Practise with guides.** Turn on ruled lines, dots or a grid, or type a word and have it repeated across the page to copy. Drag guides around, resize them, and pick a handwriting font: Australian school fonts, joined US cursive, and more.
 - **Trace a picture.** Add a photo or worksheet behind the board and fade it so it's easy to trace.
 - **Watch it back.** Replay your writing at its real pace, speed it up or slow it down, or set it to loop. Turn on **Ghost** to keep a faint copy showing while it replays.
 - **Share it.** Save the replay as an animated GIF.
 - **Made for the classroom.** Built for desktop and laptop screens, so you can project it onto the class whiteboard and write live in front of students.
 
 <p align="center">
-  <img src="docs/images/guide.png" alt="Guide text dialog with handwriting font picker" width="420"><br>
-  <sub>Type anything and pick a school handwriting font</sub>
+  <img src="docs/images/guide.png" alt="Guide text dialog with the handwriting font list open" width="420"><br>
+  <sub>Type anything and pick a school print or cursive font</sub>
 </p>
 
 Great for teachers modelling letter formation, kids learning to write, and anyone practising their handwriting.
