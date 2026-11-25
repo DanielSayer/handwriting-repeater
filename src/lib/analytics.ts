@@ -1,4 +1,5 @@
 import type { PostHog } from 'posthog-js';
+import type { GuideFontId } from './guideFonts';
 import type { LineStyle, PenType } from './types';
 
 const DEFAULT_POSTHOG_HOST = 'https://us.i.posthog.com';
@@ -19,6 +20,7 @@ interface AnalyticsEvents {
   guide_placed: {
     repeat_count: number;
     guide_size: number;
+    guide_font: GuideFontId;
   };
   guide_removed: Record<string, never>;
   background_added: {
@@ -32,6 +34,7 @@ interface AnalyticsEvents {
     line_style: LineStyle;
     has_background: boolean;
     has_guide: boolean;
+    guide_font: GuideFontId | null;
     trace_enabled: boolean;
     playback_rate: number;
   };

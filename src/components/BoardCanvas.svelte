@@ -7,7 +7,12 @@
   import { BOARD_ASPECT_RATIO, BOARD_HEIGHT, BOARD_WIDTH } from '../lib/constants';
   import { fitBoardToViewport, pointFromPointer, smoothPath } from '../lib/drawing';
   import { clamp, guideMetrics, guideBounds, guideBaselines, constrainGuide } from '../lib/guide';
-  import { guideFontFamily, loadGuideFont, type GuideFontId } from '../lib/guideFonts';
+  import {
+    guideFontFamily,
+    guideLetterSpacing,
+    loadGuideFont,
+    type GuideFontId
+  } from '../lib/guideFonts';
   import type {
     BoardBackground,
     BoardStroke,
@@ -428,7 +433,7 @@
               opacity={traceMode ? 0.78 : 0.62}
               font-family={guideFontFamily(guideFont)}
               font-size={guideSize}
-              letter-spacing={guideSize * 0.05}
+              letter-spacing={guideLetterSpacing(guideFont, guideSize)}
             >
               {#each guideRows as row, index (index)}
                 <text x={row.x} y={row.y} xml:space="preserve">{row.text}</text>

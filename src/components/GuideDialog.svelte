@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import Modal from './Modal.svelte';
   import Icon from './Icon.svelte';
+  import FontSelect from './FontSelect.svelte';
   import { GUIDE_FONTS, guideFontFamily, loadGuideFont, type GuideFontId } from '../lib/guideFonts';
 
   export let guideText: string;
@@ -29,17 +30,19 @@
   $: maxRepeats = Math.max(1, Math.floor(8 / lineCount));
   $: if (draftRepeatCount > maxRepeats) draftRepeatCount = maxRepeats;
 
-  onMount(() => {
-    // Preview every font in the list; the selected one first so the textarea is ready.
-    void requestFont(guideFont);
-    for (const font of GUIDE_FONTS) if (font.id !== guideFont) void requestFont(font.id);
-  });
+  // Load the selected font now; the rest only when the picker opens, for their previews.
+  onMount(() => void requestFont(guideFont));
+
+  function loadAllFonts(): void {
+    for (const font of GUIDE_FONTS)
+      if (!loaded.includes(font.id) && !failed.includes(font.id)) void requestFont(font.id);
+  }
 
   async function requestFont(font: GuideFontId): Promise<void> {
     failed = failed.filter((id) => id !== font);
     try {
       await loadGuideFont(font);
-      loaded = [...loaded, font];
+      if (!loaded.includes(font)) loaded = [...loaded, font];
     } catch {
       failed = [...failed, font];
     }
@@ -106,26 +109,13 @@
     </div>
 
     <span class="pop-label" id="font-label">Font</span>
-    <div class="fonts" role="group" aria-labelledby="font-label">
-      {#each GUIDE_FONTS as font (font.id)}
-        <button
-          class="pick font"
-          class:on={guideFont === font.id}
-          aria-pressed={guideFont === font.id}
-          on:click={() => (guideFont = font.id)}
-        >
-          <span>{font.label}</span>
-          {#if failed.includes(font.id)}
-            <small>Not loaded</small>
-          {:else}
-            <em
-              style={`font-family:${guideFontFamily(font.id)}`}
-              class:loading={!loaded.includes(font.id)}>agqt</em
-            >
-          {/if}
-        </button>
-      {/each}
-    </div>
+    <FontSelect
+      bind:value={guideFont}
+      labelId="font-label"
+      {loaded}
+      {failed}
+      onOpen={loadAllFonts}
+    />
     {#if failed.includes(guideFont)}
       <p class="pop-error" role="alert">
         This font could not load.
@@ -215,36 +205,6 @@
     font-weight: 700;
     text-align: center;
   }
-  .fonts {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-  .font {
-    min-height: 52px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 0 12px;
-    font-size: 14px;
-    font-weight: 600;
-    text-align: left;
-  }
-  .font em {
-    flex: none;
-    color: var(--ink);
-    font-size: 26px;
-    font-style: normal;
-    font-weight: 400;
-  }
-  .font em.loading {
-    opacity: 0;
-  }
-  .font small {
-    color: var(--muted);
-    font-size: 13px;
-  }
   .link {
     padding: 0;
     border: 0;
@@ -265,9 +225,6 @@
   }
 
   @media (max-width: 559px) {
-    .fonts {
-      grid-template-columns: 1fr;
-    }
     .foot {
       flex-wrap: wrap;
     }
