@@ -4,32 +4,58 @@ import vic_beginnerUrl from '../assets/fonts/vic-beginner-4064d35c5d.woff2?url';
 import patrick_handUrl from '../assets/fonts/patrick-hand-ac5bc9033b.woff2?url';
 import caveatUrl from '../assets/fonts/caveat-d0b7b931b8.woff2?url';
 import dancing_scriptUrl from '../assets/fonts/dancing-script-570e4265bb.woff2?url';
+import us_tradUrl from '../assets/fonts/us-trad-f7b3e5abfd.woff2?url';
 
+export const GUIDE_FONT_GROUPS = [
+  { id: 'school', label: 'School fonts' },
+  { id: 'handwriting', label: 'Handwriting' }
+] as const;
+
+/** Keep fonts ordered by group; the picker lists them in this order. */
 export const GUIDE_FONTS = [
   {
     id: 'qbeginners',
-    label: 'Edu QLD Beginner (QBeginners)',
+    group: 'school',
+    label: 'QLD Beginner',
     family: 'Edu QLD Beginner',
     url: qbeginnersUrl
   },
   {
     id: 'nsw-foundation',
+    group: 'school',
     label: 'NSW/ACT Foundation',
     family: 'Edu NSW ACT Foundation',
     url: nsw_foundationUrl
   },
   {
     id: 'vic-beginner',
+    group: 'school',
     label: 'VIC/WA/NT Beginner',
     family: 'Edu VIC WA NT Beginner',
     url: vic_beginnerUrl
   },
-  { id: 'patrick-hand', label: 'Patrick Hand', family: 'Patrick Hand', url: patrick_handUrl },
-  { id: 'caveat', label: 'Caveat', family: 'Caveat', url: caveatUrl },
+  {
+    id: 'us-trad',
+    group: 'school',
+    label: 'US Cursive',
+    family: 'Playwrite US Trad',
+    joined: true,
+    url: us_tradUrl
+  },
+  {
+    id: 'patrick-hand',
+    group: 'handwriting',
+    label: 'Patrick Hand',
+    family: 'Patrick Hand',
+    url: patrick_handUrl
+  },
+  { id: 'caveat', group: 'handwriting', label: 'Caveat', family: 'Caveat', url: caveatUrl },
   {
     id: 'dancing-script',
+    group: 'handwriting',
     label: 'Dancing Script',
     family: 'Dancing Script',
+    joined: true,
     url: dancing_scriptUrl
   }
 ] as const;
@@ -44,6 +70,12 @@ export function isGuideFont(value: unknown): value is GuideFontId {
 export function guideFontFamily(id: GuideFontId = DEFAULT_GUIDE_FONT): string {
   const font = GUIDE_FONTS.find((font) => font.id === id) ?? GUIDE_FONTS[0];
   return `"${font.family}", cursive`;
+}
+
+/** Print fonts get a little air between letters; joined cursive must touch to connect. */
+export function guideLetterSpacing(id: GuideFontId | undefined, size: number): number {
+  const font = GUIDE_FONTS.find((font) => font.id === id) ?? GUIDE_FONTS[0];
+  return 'joined' in font && font.joined ? 0 : size * 0.05;
 }
 
 const pendingFonts = new Map<GuideFontId, Promise<void>>();

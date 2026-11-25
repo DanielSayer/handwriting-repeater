@@ -2,7 +2,6 @@
   import { onMount, tick } from 'svelte';
   import BoardCanvas from './components/BoardCanvas.svelte';
   import BoardPersistence from './components/BoardPersistence.svelte';
-  import GuideDialog from './components/GuideDialog.svelte';
   import Icon from './components/Icon.svelte';
   import TopBar from './components/TopBar.svelte';
   import Tray from './components/Tray.svelte';
@@ -194,7 +193,8 @@
     if (text) {
       captureEvent('guide_placed', {
         repeat_count: repeatCount,
-        guide_size: guideSize
+        guide_size: guideSize,
+        guide_font: guideFont
       });
     } else if (hadGuide) {
       captureEvent('guide_removed', {});
@@ -263,6 +263,7 @@
         line_style: lineStyle,
         has_background: backgroundImage !== null,
         has_guide: Boolean(guideText),
+        guide_font: guideText ? guideFont : null,
         trace_enabled: traceMode,
         playback_rate: playbackRate
       });
@@ -411,19 +412,22 @@
 </div>
 
 {#if guideDialogOpen}
-  <GuideDialog
-    bind:guideFont
-    {guideText}
-    {repeatCount}
-    {guideSize}
-    onClose={() => (guideDialogOpen = false)}
-    onPlace={placeGuide}
-    onAdjust={() => {
-      guideDialogOpen = false;
-      stopReplay();
-      editingGuide = true;
-    }}
-  />
+  <!-- Loaded on first open to keep the font picker out of the startup bundle. -->
+  {#await import('./components/GuideDialog.svelte') then { default: GuideDialog }}
+    <GuideDialog
+      bind:guideFont
+      {guideText}
+      {repeatCount}
+      {guideSize}
+      onClose={() => (guideDialogOpen = false)}
+      onPlace={placeGuide}
+      onAdjust={() => {
+        guideDialogOpen = false;
+        stopReplay();
+        editingGuide = true;
+      }}
+    />
+  {/await}
 {/if}
 
 <style>

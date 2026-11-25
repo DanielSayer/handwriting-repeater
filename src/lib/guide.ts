@@ -1,7 +1,12 @@
 import { BOARD_HEIGHT, BOARD_WIDTH } from './constants';
 import { createGuideRows } from './drawing';
 import type { GuideLayout } from './types';
-import { DEFAULT_GUIDE_FONT, guideFontFamily, type GuideFontId } from './guideFonts';
+import {
+  DEFAULT_GUIDE_FONT,
+  guideFontFamily,
+  guideLetterSpacing,
+  type GuideFontId
+} from './guideFonts';
 
 export const clamp = (value: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, value));
@@ -19,7 +24,7 @@ export function guideMetrics(
   font: GuideFontId = DEFAULT_GUIDE_FONT
 ) {
   context.font = `${size}px ${guideFontFamily(font)}`;
-  context.letterSpacing = `${size * 0.05}px`;
+  context.letterSpacing = `${guideLetterSpacing(font, size)}px`;
   const lines = guideLines(text, repeats);
   const metrics = lines.map((line) => context.measureText(line || ' '));
   return {

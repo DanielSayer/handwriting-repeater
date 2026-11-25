@@ -1,7 +1,7 @@
 import { segmentAt, strokeGeometry } from './strokeGeometry';
 import { GIFEncoder, applyPalette, quantize } from 'gifenc';
 import { guideMetrics, guideBaselines } from './guide';
-import { guideFontFamily, loadGuideFont } from './guideFonts';
+import { guideFontFamily, guideLetterSpacing, loadGuideFont } from './guideFonts';
 import { createReplaySchedule, replayDuration, strokeReplayProgress } from './replay';
 import type { BoardStroke, ExportBoardOptions, LineStyle, Point } from './types';
 
@@ -289,7 +289,7 @@ function drawGuide(
   context.scale(width / options.boardWidth, height / options.boardHeight);
   context.font = `${options.guideSize}px ${guideFontFamily(options.guideFont)}`;
   context.textBaseline = 'alphabetic';
-  context.letterSpacing = `${options.guideSize * 0.05}px`;
+  context.letterSpacing = `${guideLetterSpacing(options.guideFont, options.guideSize)}px`;
   for (const row of guideBaselines(
     options.guideText,
     options.repeatCount,
