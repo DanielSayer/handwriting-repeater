@@ -35,7 +35,7 @@
     const below = window.innerHeight - rect.bottom - 12;
     const above = rect.top - 12;
     const up = below < 240 && above > below;
-    const room = Math.max(120, Math.min(380, up ? above : below) - 6);
+    const room = Math.max(120, Math.min(420, up ? above : below) - 6);
     panelStyle =
       `left:${rect.left}px;width:${rect.width}px;max-height:${room}px;` +
       (up ? `bottom:${window.innerHeight - rect.top + 6}px` : `top:${rect.bottom + 6}px`);
