@@ -78,8 +78,7 @@ describe('GIF encoding', () => {
       strokes: [],
       backgroundImage: null,
       backgroundOpacity: 1,
-      boardWidth: 960,
-      boardHeight: 1,
+      region: { x: 0, y: 0, width: 960, height: 1 },
       pageColour: '#ffffff',
       lineStyle: 'blank',
       guideText: '',
@@ -99,6 +98,59 @@ describe('GIF encoding', () => {
       );
       expect(Array.from(bytes.slice(extension + 11, extension + 16))).toEqual([3, 1, 0, 0, 0]);
     }
+  });
+
+  it('offsets strokes and sizes the GIF from the export region', async () => {
+    const calls: { method: string; args: number[] }[] = [];
+    const record =
+      (method: string) =>
+      (...args: number[]) =>
+        calls.push({ method, args });
+    let size: number[] = [];
+    vi.stubGlobal(
+      'OffscreenCanvas',
+      class {
+        constructor(...args: number[]) {
+          size = args;
+        }
+        getContext() {
+          const context: Record<string, unknown> = {
+            moveTo: record('moveTo'),
+            lineTo: record('lineTo'),
+            getImageData: () => ({ data: new Uint8ClampedArray(960 * 4).fill(255) })
+          };
+          // Any other drawing call is a no-op; property writes are accepted.
+          return new Proxy(context, { get: (target, key: string) => target[key] ?? (() => {}) });
+        }
+      }
+    );
+
+    await encodeBoardGif({
+      strokes: [
+        {
+          ...stroke,
+          points: [
+            { x: 100, y: 200, elapsedMs: 0 },
+            { x: 150, y: 200, elapsedMs: 10 }
+          ]
+        }
+      ],
+      backgroundImage: null,
+      backgroundOpacity: 1,
+      region: { x: 100, y: 200, width: 480, height: 240 },
+      pageColour: '#ffffff',
+      lineStyle: 'blank',
+      guideText: '',
+      repeatCount: 1,
+      guideSize: 48,
+      playbackRate: 1,
+      traceMode: false,
+      loopMode: false
+    });
+
+    expect(size).toEqual([960, 480]);
+    expect(calls).toContainEqual({ method: 'moveTo', args: [0, 0] });
+    expect(calls).toContainEqual({ method: 'lineTo', args: [100, 0] });
   });
 
   it('writes an animated GIF with no repeat extension', () => {

@@ -7,6 +7,7 @@
   import Tray from './components/Tray.svelte';
   import { captureEvent, captureException } from './lib/analytics';
   import {
+    BOARD_BOUNDS,
     BOARD_STATE_VERSION,
     DEFAULT_BOARD_STATE,
     ZOOM_MAX,
@@ -49,8 +50,6 @@
   let guideLayout = DEFAULT_BOARD_STATE.guideLayout;
   let guideFont = DEFAULT_BOARD_STATE.guideFont;
   let editingGuide = false;
-  let boardWidth = 960;
-  let boardHeight = 560;
   let replaying = false;
   let replayNonce = 0;
   let replayTimer: ReturnType<typeof setTimeout> | undefined;
@@ -249,8 +248,7 @@
       strokes,
       backgroundImage,
       backgroundOpacity,
-      boardWidth,
-      boardHeight,
+      region: { ...BOARD_BOUNDS },
       pageColour,
       lineStyle,
       guideText,
@@ -349,10 +347,6 @@
             {backgroundOpacity}
             {timer}
             onStrokeComplete={addStroke}
-            onResize={(width, height) => {
-              boardWidth = width;
-              boardHeight = height;
-            }}
             onBackgroundSelected={(file) => void setBackground(file)}
             onBackgroundError={reportBackgroundSelectionError}
           />

@@ -48,7 +48,6 @@
   export let backgroundOpacity: number;
   export let timer: { startedAt: number; durationMinutes: number } | null;
   export let onStrokeComplete: (stroke: BoardStroke) => void;
-  export let onResize: (width: number, height: number) => void;
   export let onBackgroundSelected: (file: File) => void;
   export let onBackgroundError: (message: string) => void;
 
@@ -110,7 +109,6 @@
     window.addEventListener('resize', measureOnNextFrame);
     document.addEventListener('fullscreenchange', measureOnNextFrame);
     measureViewport();
-    onResize(BOARD_WIDTH, BOARD_HEIGHT);
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', measureOnNextFrame);
@@ -253,8 +251,8 @@
     const count = nextMetrics.lines.length - 1;
     const fit = Math.min(
       1,
-      (BOARD_WIDTH - 16) / nextMetrics.width,
-      (BOARD_HEIGHT - 16) / (nextMetrics.ascent + nextMetrics.descent + count * nextSpacing)
+      (BOARD_BOUNDS.width - 16) / nextMetrics.width,
+      (BOARD_BOUNDS.height - 16) / (nextMetrics.ascent + nextMetrics.descent + count * nextSpacing)
     );
     guideSize = Math.max(12, requestedSize * fit);
     nextSpacing = Math.max(16, nextSpacing * fit);
