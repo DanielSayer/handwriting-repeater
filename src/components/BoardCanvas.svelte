@@ -57,6 +57,8 @@
   export let guideLayout: GuideLayout | null;
   export let editingGuide: boolean;
   export let editingBackground: boolean;
+  /** Bound: the hand tool makes a left drag pan instead of draw. H toggles it. */
+  export let handTool: boolean;
   /** Bound out: the board area currently on screen, used to export what you can see. */
   export let visibleRect: Rect;
   export let backgroundImage: BoardBackground | null;
@@ -153,6 +155,7 @@
   // Page position inside the paper element, which starts at the board's top-left corner.
   const pageInPaper = `left:${PAGE_RECT.x - BOARD_BOUNDS.x}px;top:${PAGE_RECT.y - BOARD_BOUNDS.y}px;width:${PAGE_RECT.width}px;height:${PAGE_RECT.height}px`;
   $: handleSize = Math.max(24, 32 / Math.max(Number.EPSILON, transform.scale));
+  $: handPans = handTool && !editingGuide && !editingBackground;
 
   onMount(() => {
     measureContext = document.createElement('canvas').getContext('2d');
@@ -283,9 +286,10 @@
     return { x: clientX - rect.left, y: clientY - rect.top };
   }
 
-  /** Right or middle drag pans; so does a left drag while Space is held. */
+  /** Right or middle drag pans; so does a left drag with Space held or the hand tool (unless editing). */
   function isPanStart(event: PointerEvent): boolean {
-    return event.button === 1 || event.button === 2 || (event.button === 0 && spaceHeld);
+    if (event.button === 1 || event.button === 2) return true;
+    return event.button === 0 && (spaceHeld || handPans);
   }
 
   function startPan(event: PointerEvent): void {
@@ -379,7 +383,19 @@
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
-    if (event.code !== 'Space' || isEditable(event.target)) return;
+    if (isEditable(event.target)) return;
+    if (
+      event.code === 'KeyH' &&
+      !event.repeat &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
+      if (event.target !== document.body && !viewportElement.contains(event.target as Node)) return;
+      handTool = !handTool;
+      return;
+    }
+    if (event.code !== 'Space') return;
     if (event.target !== document.body && !viewportElement.contains(event.target as Node)) return;
     event.preventDefault();
     spaceHeld = true;
@@ -746,7 +762,7 @@
         class="board-viewport"
         class:trace-active={traceMode}
         class:background-drag-active={backgroundDragActive}
-        class:pan-ready={spaceHeld}
+        class:pan-ready={spaceHeld || handPans}
         class:panning={gesture?.kind === 'pan' || gesture?.kind === 'pinch'}
         bind:this={viewportElement}
         on:pointerdown={handlePointerDown}
@@ -783,7 +799,7 @@
               ? 'Guide editor. Arrow keys move, plus and minus resize, Escape finishes editing.'
               : editingBackground
                 ? 'Picture editor. Arrow keys move, plus and minus resize, Escape finishes editing.'
-                : 'Handwriting canvas. Arrow keys pan. Paste an image to use it as a background.'}
+                : `Handwriting canvas${handTool ? ', hand tool on' : ''}. Arrow keys pan, H toggles the hand tool. Paste an image to use it as a background.`}
             role="application"
             on:paste={handleCanvasPaste}
             on:keydown={canvasKeyboard}
