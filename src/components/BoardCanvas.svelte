@@ -5,6 +5,7 @@
   import TimerWidget from './TimerWidget.svelte';
   import { BACKGROUND_IMAGE_ACCEPT, MAX_BACKGROUND_FILE_SIZE } from '../lib/backgroundImage';
   import { BOARD_ASPECT_RATIO, BOARD_BOUNDS, BOARD_HEIGHT, BOARD_WIDTH } from '../lib/constants';
+  import { cameraTransform, centreCamera, cssTransform } from '../lib/camera';
   import { fitBoardToViewport, pointFromPointer, smoothPath } from '../lib/drawing';
   import { clamp, guideMetrics, guideBounds, guideBaselines, constrainGuide } from '../lib/guide';
   import {
@@ -90,7 +91,10 @@
   $: if (editingGuide || replaying) cancelStroke();
   $: if (!editingGuide || replaying) cancelGuideGesture();
   $: paperSize = fitBoardToViewport(viewportWidth, viewportHeight, BOARD_ASPECT_RATIO);
-  $: handleSize = Math.max(24, (32 * BOARD_WIDTH) / Math.max(1, paperSize.width * zoom));
+  // The viewport is the page fitted to the stage; the camera pans and zooms within it.
+  $: camera = centreCamera(BOARD_BOUNDS, zoom);
+  $: transform = cameraTransform(camera, paperSize, paperSize.width / BOARD_WIDTH);
+  $: handleSize = Math.max(24, 32 / Math.max(Number.EPSILON, transform.scale));
 
   onMount(() => {
     measureContext = document.createElement('canvas').getContext('2d');
@@ -393,11 +397,11 @@
         class="board-viewport"
         class:trace-active={traceMode}
         class:background-drag-active={backgroundDragActive}
-        style={`width:${paperSize.width * Math.min(zoom, 1)}px;height:${paperSize.height * Math.min(zoom, 1)}px`}
+        style={`width:${paperSize.width}px;height:${paperSize.height}px`}
       >
         <div
           class={`paper lines-${lineStyle}`}
-          style={`--paper:${pageColour};--zoom:${(paperSize.width / BOARD_WIDTH) * zoom};width:${BOARD_WIDTH}px;height:${BOARD_HEIGHT}px`}
+          style={`--paper:${pageColour};transform:${cssTransform(transform)};width:${BOARD_WIDTH}px;height:${BOARD_HEIGHT}px`}
         >
           {#if backgroundImage}
             <img
@@ -566,12 +570,10 @@
   }
   .paper {
     --paper: #fcfdfd;
-    --zoom: 1;
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(var(--zoom));
-    transform-origin: center;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
     overflow: hidden;
     background-color: var(--paper);
     touch-action: none;
