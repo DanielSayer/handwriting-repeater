@@ -15,7 +15,6 @@
     PAGE_RECT
   } from './lib/constants';
   import { nextZoomLevel } from './lib/camera';
-  import { prepareBackgroundImage } from './lib/backgroundImage';
   import {
     createReplaySchedule,
     playbackRateForSpeed,
@@ -222,6 +221,7 @@
     backgroundError = '';
 
     try {
+      const { prepareBackgroundImage } = await import('./lib/prepareBackgroundImage');
       const image = await prepareBackgroundImage(file);
       if (request !== backgroundRequest) return;
       backgroundImage = image;

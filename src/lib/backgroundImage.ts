@@ -1,52 +1,10 @@
-import { PAGE_RECT } from './constants';
-import type { BoardBackground, Rect } from './types';
+import type { Rect } from './types';
 
 export const BACKGROUND_IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp';
 export const MAX_BACKGROUND_FILE_SIZE = 15 * 1024 * 1024;
 
-const MAX_BACKGROUND_DIMENSION = 1600;
 /** Smallest picture side while resizing, in board pixels. */
 export const MIN_BACKGROUND_SIZE = 32;
-
-export async function prepareBackgroundImage(file: File): Promise<BoardBackground> {
-  if (!BACKGROUND_IMAGE_ACCEPT.split(',').includes(file.type)) {
-    throw new Error('Choose a PNG, JPEG, or WebP image.');
-  }
-
-  if (file.size > MAX_BACKGROUND_FILE_SIZE) {
-    throw new Error('Choose an image smaller than 15 MB.');
-  }
-
-  const sourceUrl = URL.createObjectURL(file);
-
-  try {
-    const image = await loadImage(sourceUrl);
-    const scale = Math.min(
-      1,
-      MAX_BACKGROUND_DIMENSION / Math.max(image.naturalWidth, image.naturalHeight)
-    );
-    const width = Math.max(1, Math.round(image.naturalWidth * scale));
-    const height = Math.max(1, Math.round(image.naturalHeight * scale));
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('This browser cannot prepare the image.');
-    context.drawImage(image, 0, 0, width, height);
-
-    const webp = canvas.toDataURL('image/webp', 0.86);
-    const src = webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/jpeg', 0.86);
-
-    return {
-      src,
-      name: file.name || 'Pasted image',
-      rect: containRect(width, height, PAGE_RECT)
-    };
-  } finally {
-    URL.revokeObjectURL(sourceUrl);
-  }
-}
 
 /** Largest rect with the image's aspect ratio that fits in `frame`, centred (object-fit: contain). */
 export function containRect(width: number, height: number, frame: Rect): Rect {
@@ -81,13 +39,4 @@ export function scaleRect(rect: Rect, factor: number, bounds: Rect): Rect {
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.max(minimum, Math.min(maximum, value));
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('That image could not be opened.'));
-    image.src = src;
-  });
 }

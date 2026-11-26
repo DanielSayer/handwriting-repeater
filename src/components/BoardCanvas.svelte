@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import Dropzone from 'svelte-file-dropzone';
   import StrokeLayer from './StrokeLayer.svelte';
-  import TimerWidget from './TimerWidget.svelte';
   import {
     BACKGROUND_IMAGE_ACCEPT,
     MAX_BACKGROUND_FILE_SIZE,
@@ -855,7 +854,10 @@
         {/if}
       </div>
       {#if timer}
-        <TimerWidget startedAt={timer.startedAt} durationMinutes={timer.durationMinutes} />
+        <!-- Loaded on demand to keep it out of the startup bundle. -->
+        {#await import('./TimerWidget.svelte') then { default: TimerWidget }}
+          <TimerWidget startedAt={timer.startedAt} durationMinutes={timer.durationMinutes} />
+        {/await}
       {/if}
     </div>
   </Dropzone>
