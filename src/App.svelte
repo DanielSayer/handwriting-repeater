@@ -51,6 +51,7 @@
   let guideLayout = DEFAULT_BOARD_STATE.guideLayout;
   let guideFont = DEFAULT_BOARD_STATE.guideFont;
   let editingGuide = false;
+  let editingBackground = false;
   let replaying = false;
   let replayNonce = 0;
   let replayTimer: ReturnType<typeof setTimeout> | undefined;
@@ -160,6 +161,7 @@
     stopReplay();
     const nonce = replayNonce;
     editingGuide = false;
+    editingBackground = false;
     await tick();
     if (nonce !== replayNonce || !strokes.length) return;
     replaying = true;
@@ -194,6 +196,7 @@
         rowSpacing: lineStyle === 'grid' ? 48 : 92
       };
     editingGuide = Boolean(text);
+    if (text) editingBackground = false;
     if (!text) guideLayout = null;
     stopReplay();
     guideDialogOpen = false;
@@ -234,6 +237,7 @@
   }
 
   function removeBackground(): void {
+    editingBackground = false;
     backgroundRequest += 1;
     backgroundLoading = false;
     backgroundImage = null;
@@ -317,6 +321,11 @@
     onOpenGuide={() => (guideDialogOpen = true)}
     onBackgroundSelected={(file) => void setBackground(file)}
     onRemoveBackground={removeBackground}
+    onAdjustBackground={() => {
+      stopReplay();
+      editingGuide = false;
+      editingBackground = true;
+    }}
     onStartTimer={startTimer}
     onCancelTimer={cancelTimer}
     onExport={exportBoard}
@@ -344,18 +353,27 @@
             bind:guideLayout
             {guideFont}
             bind:editingGuide
-            {backgroundImage}
+            bind:editingBackground
+            bind:backgroundImage
             {backgroundOpacity}
             {timer}
             onStrokeComplete={addStroke}
             onBackgroundSelected={(file) => void setBackground(file)}
             onBackgroundError={reportBackgroundSelectionError}
           />
-          {#if editingGuide}
+          {#if editingGuide || editingBackground}
             <div class="guide-edit" role="status">
               <Icon name="move" size={18} />
-              <span>Drag to move. Drag the corner to resize.</span>
-              <button class="btn sel" on:click={() => (editingGuide = false)}>Done</button>
+              <span
+                >Drag the {editingBackground ? 'picture' : 'guide'} to move it. Drag the corner to resize.</span
+              >
+              <button
+                class="btn sel"
+                on:click={() => {
+                  editingGuide = false;
+                  editingBackground = false;
+                }}>Done</button
+              >
             </div>
           {/if}
           <div class="zoom" role="group" aria-label="Zoom">
@@ -432,6 +450,7 @@
       onAdjust={() => {
         guideDialogOpen = false;
         stopReplay();
+        editingBackground = false;
         editingGuide = true;
       }}
     />

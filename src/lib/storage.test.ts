@@ -100,6 +100,19 @@ describe('saved board validation', () => {
     });
   });
 
+  it('keeps a valid picture position and drops an invalid one', () => {
+    const image = { src: 'data:image/png;base64,AAAA', name: 'a.png' };
+    const rect = { x: -200, y: 100, width: 300, height: 200 };
+    expect(parseBoardState({ backgroundImage: { ...image, rect } }).backgroundImage).toEqual({
+      ...image,
+      rect
+    });
+    expect(
+      parseBoardState({ backgroundImage: { ...image, rect: { ...rect, width: -1 } } })
+        .backgroundImage
+    ).toEqual(image);
+  });
+
   it('maps colours saved by the previous palette to the new one', () => {
     const board = parseBoardState({ penColour: '#EF6B4A', pageColour: '#fffdf7' });
     expect(board.penColour).toBe('#d8392f');

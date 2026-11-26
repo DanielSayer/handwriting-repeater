@@ -21,6 +21,8 @@ export interface BoardStroke {
 export interface BoardBackground {
   src: string;
   name: string;
+  /** Where the picture sits on the board. Older boards omit it: contained in the page. */
+  rect?: Rect;
 }
 
 export interface PaperOption {

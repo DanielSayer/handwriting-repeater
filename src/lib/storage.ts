@@ -82,6 +82,16 @@ export function parseBoardState(value: unknown): PersistedBoardState {
     typeof value.backgroundImage.name === 'string'
   ) {
     state.backgroundImage = { src: value.backgroundImage.src, name: value.backgroundImage.name };
+    const rect = value.backgroundImage.rect;
+    if (
+      record(rect) &&
+      numberInRange(rect.x, BOARD_BOUNDS.x, BOARD_BOUNDS.x + BOARD_BOUNDS.width) &&
+      numberInRange(rect.y, BOARD_BOUNDS.y, BOARD_BOUNDS.y + BOARD_BOUNDS.height) &&
+      numberInRange(rect.width, 1, BOARD_BOUNDS.width) &&
+      numberInRange(rect.height, 1, BOARD_BOUNDS.height)
+    ) {
+      state.backgroundImage.rect = { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    }
   }
   if (colour(value.penColour)) state.penColour = migrateColour(value.penColour);
   if (colour(value.pageColour)) state.pageColour = migrateColour(value.pageColour);

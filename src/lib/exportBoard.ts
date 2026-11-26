@@ -3,6 +3,7 @@ import { GIFEncoder, applyPalette, quantize } from 'gifenc';
 import { guideMetrics, guideBaselines } from './guide';
 import { guideFontFamily, guideLetterSpacing, loadGuideFont } from './guideFonts';
 import { createReplaySchedule, replayDuration, strokeReplayProgress } from './replay';
+import { containRect } from './backgroundImage';
 import { PAGE_RECT } from './constants';
 import type { BoardStroke, ExportBoardOptions, LineStyle, Point, Rect } from './types';
 
@@ -199,24 +200,14 @@ async function drawBackgroundImage(
   const image = await loadImage(options.backgroundImage.src);
   const naturalWidth = 'naturalWidth' in image ? image.naturalWidth : image.width;
   const naturalHeight = 'naturalHeight' in image ? image.naturalHeight : image.height;
-  // The image is contained within the page, matching `object-fit: contain` on the board.
+  // Older boards have no picture rect: the picture is contained within the page.
+  const rect = options.backgroundImage.rect ?? containRect(naturalWidth, naturalHeight, PAGE_RECT);
   const scale = exportScale(width, options);
-  const page = toExport(PAGE_RECT, scale, options.region);
-  const pageWidth = PAGE_RECT.width * scale;
-  const pageHeight = PAGE_RECT.height * scale;
-  const fit = Math.min(pageWidth / naturalWidth, pageHeight / naturalHeight);
-  const imageWidth = naturalWidth * fit;
-  const imageHeight = naturalHeight * fit;
+  const origin = toExport(rect, scale, options.region);
 
   context.save();
   context.globalAlpha = options.backgroundOpacity;
-  context.drawImage(
-    image,
-    page.x + (pageWidth - imageWidth) / 2,
-    page.y + (pageHeight - imageHeight) / 2,
-    imageWidth,
-    imageHeight
-  );
+  context.drawImage(image, origin.x, origin.y, rect.width * scale, rect.height * scale);
   context.restore();
   if ('close' in image) image.close();
 }

@@ -18,6 +18,7 @@
   export let onOpenGuide: () => void;
   export let onBackgroundSelected: (file: File) => void;
   export let onRemoveBackground: () => void;
+  export let onAdjustBackground: () => void;
   export let onStartTimer: (minutes: number) => void;
   export let onCancelTimer: () => void;
   export let onExport: () => void;
@@ -192,6 +193,13 @@
           aria-valuetext={`${Math.round(backgroundOpacity * 100)}% visible`}
         />
         <div class="row end">
+          <button
+            class="btn boxed"
+            on:click={() => {
+              menu = null;
+              onAdjustBackground();
+            }}>Move / resize</button
+          >
           <button class="btn boxed" on:click={pickBackground} disabled={backgroundLoading}
             >{backgroundLoading ? 'Adding…' : 'Replace'}</button
           >
