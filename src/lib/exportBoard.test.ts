@@ -151,6 +151,34 @@ describe('GIF encoding', () => {
     expect(size).toEqual([960, 480]);
     expect(calls).toContainEqual({ method: 'moveTo', args: [0, 0] });
     expect(calls).toContainEqual({ method: 'lineTo', args: [100, 0] });
+
+    calls.length = 0;
+    await encodeBoardGif({
+      strokes: [
+        {
+          ...stroke,
+          points: [
+            { x: 1000, y: 1000, elapsedMs: 0 },
+            { x: 1100, y: 1000, elapsedMs: 10 }
+          ]
+        }
+      ],
+      backgroundImage: null,
+      backgroundOpacity: 1,
+      region: 'content',
+      pageColour: '#ffffff',
+      lineStyle: 'blank',
+      guideText: '',
+      repeatCount: 1,
+      guideSize: 48,
+      playbackRate: 1,
+      traceMode: false,
+      loopMode: false
+    });
+
+    // A short stroke is centred in a 480x280 region, exported at double size.
+    expect(size).toEqual([960, 560]);
+    expect(calls).toContainEqual({ method: 'moveTo', args: [380, 280] });
   });
 
   it('writes an animated GIF with no repeat extension', () => {

@@ -82,8 +82,8 @@ export interface ExportBoardOptions {
   strokes: BoardStroke[];
   backgroundImage: BoardBackground | null;
   backgroundOpacity: number;
-  /** Board area to render, in board pixels. The GIF keeps its aspect ratio. */
-  region: Rect;
+  /** Board area to render, in board pixels, or 'content' for everything on the board. */
+  region: Rect | 'content';
   pageColour: string;
   lineStyle: LineStyle;
   guideText: string;

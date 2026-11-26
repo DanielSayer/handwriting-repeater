@@ -4,13 +4,19 @@ import { guideMetrics, guideBaselines } from './guide';
 import { guideFontFamily, guideLetterSpacing, loadGuideFont } from './guideFonts';
 import { createReplaySchedule, replayDuration, strokeReplayProgress } from './replay';
 import { containRect } from './backgroundImage';
-import { PAGE_RECT } from './constants';
+import { BOARD_BOUNDS, PAGE_RECT } from './constants';
+import { contentRegion, exportSize, strokeBounds } from './exportRegion';
 import type { BoardStroke, ExportBoardOptions, LineStyle, Point, Rect } from './types';
 
 type DrawingCanvas = HTMLCanvasElement | OffscreenCanvas;
 type DrawingContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+type ResolvedOptions = Omit<ExportBoardOptions, 'region'> & { region: Rect };
+type PictureImage = HTMLImageElement | ImageBitmap;
+interface Picture {
+  image: PictureImage;
+  rect: Rect;
+}
 
-const EXPORT_WIDTH = 960;
 const TARGET_FRAME_DELAY_MS = 80;
 const MAX_GIF_FRAMES = 180;
 const FINAL_FRAME_OFFSET_SECONDS = 0.001;
@@ -20,10 +26,11 @@ export interface GifFrame {
   delayMs: number;
 }
 
-export async function encodeBoardGif(options: ExportBoardOptions): Promise<Blob> {
-  if (options.guideText) await loadGuideFont(options.guideFont);
-  const width = EXPORT_WIDTH;
-  const height = Math.round(width * (options.region.height / options.region.width));
+export async function encodeBoardGif(input: ExportBoardOptions): Promise<Blob> {
+  if (input.guideText) await loadGuideFont(input.guideFont);
+  const picture = input.backgroundImage ? await loadPicture(input.backgroundImage) : null;
+  const options: ResolvedOptions = { ...input, region: resolveRegion(input, picture) };
+  const { width, height } = exportSize(options.region);
   const canvas = createCanvas(width, height);
   const context = getCanvasContext(canvas);
   const baseCanvas = createCanvas(width, height);
@@ -32,7 +39,7 @@ export async function encodeBoardGif(options: ExportBoardOptions): Promise<Blob>
   const frames = createGifFramePlan(replayDuration(schedule));
 
   drawBackground(baseContext, width, height, options.pageColour, options.lineStyle, options);
-  await drawBackgroundImage(baseContext, width, height, options);
+  if (picture) drawPicture(baseContext, width, options, picture);
   drawGuide(baseContext, width, height, options);
 
   renderFrame(context, baseCanvas, width, height, options, schedule, frames.at(-1)!.elapsedSeconds);
@@ -55,6 +62,7 @@ export async function encodeBoardGif(options: ExportBoardOptions): Promise<Blob>
   }
 
   gif.finish();
+  if (picture && 'close' in picture.image) picture.image.close();
   return new Blob([gif.bytes()], { type: 'image/gif' });
 }
 
@@ -111,7 +119,7 @@ function renderFrame(
   baseCanvas: DrawingCanvas,
   width: number,
   height: number,
-  options: ExportBoardOptions,
+  options: ResolvedOptions,
   schedule: ReturnType<typeof createReplaySchedule>,
   elapsedSeconds: number
 ): void {
@@ -162,7 +170,7 @@ function includeAnimationColours(palette: number[][]): number[][] {
 }
 
 /** Board pixels to export pixels. */
-function exportScale(width: number, options: ExportBoardOptions): number {
+function exportScale(width: number, options: ResolvedOptions): number {
   return width / options.region.width;
 }
 
@@ -189,30 +197,69 @@ function getCanvasContext(canvas: DrawingCanvas): DrawingContext {
   return context;
 }
 
-async function drawBackgroundImage(
-  context: DrawingContext,
-  width: number,
-  height: number,
-  options: ExportBoardOptions
-): Promise<void> {
-  if (!options.backgroundImage) return;
-
-  const image = await loadImage(options.backgroundImage.src);
+async function loadPicture(background: NonNullable<ExportBoardOptions['backgroundImage']>) {
+  const image = await loadImage(background.src);
   const naturalWidth = 'naturalWidth' in image ? image.naturalWidth : image.width;
   const naturalHeight = 'naturalHeight' in image ? image.naturalHeight : image.height;
   // Older boards have no picture rect: the picture is contained within the page.
-  const rect = options.backgroundImage.rect ?? containRect(naturalWidth, naturalHeight, PAGE_RECT);
-  const scale = exportScale(width, options);
-  const origin = toExport(rect, scale, options.region);
-
-  context.save();
-  context.globalAlpha = options.backgroundOpacity;
-  context.drawImage(image, origin.x, origin.y, rect.width * scale, rect.height * scale);
-  context.restore();
-  if ('close' in image) image.close();
+  const rect = background.rect ?? containRect(naturalWidth, naturalHeight, PAGE_RECT);
+  return { image, rect } satisfies Picture;
 }
 
-async function loadImage(src: string): Promise<HTMLImageElement | ImageBitmap> {
+function resolveRegion(options: ExportBoardOptions, picture: Picture | null): Rect {
+  if (options.region !== 'content') return options.region;
+  return contentRegion(
+    [strokeBounds(options.strokes), guideRect(options), picture?.rect],
+    BOARD_BOUNDS,
+    PAGE_RECT
+  );
+}
+
+/** Box around the guide text, in board pixels. */
+function guideRect(options: ExportBoardOptions): Rect | null {
+  if (!options.guideText) return null;
+  const context = getCanvasContext(createCanvas(1, 1));
+  const metrics = guideMetrics(
+    context,
+    options.guideText,
+    options.repeatCount,
+    options.guideSize,
+    options.guideFont
+  );
+  const rows = guideBaselines(
+    options.guideText,
+    options.repeatCount,
+    options.guideLayout ?? null,
+    metrics
+  );
+  if (!rows.length) return null;
+  const top = Math.min(...rows.map((row) => row.y)) - metrics.ascent;
+  const bottom = Math.max(...rows.map((row) => row.y)) + metrics.descent;
+  const left = Math.min(...rows.map((row) => row.x));
+  return { x: left, y: top, width: metrics.width, height: bottom - top };
+}
+
+function drawPicture(
+  context: DrawingContext,
+  width: number,
+  options: ResolvedOptions,
+  picture: Picture
+): void {
+  const scale = exportScale(width, options);
+  const origin = toExport(picture.rect, scale, options.region);
+  context.save();
+  context.globalAlpha = options.backgroundOpacity;
+  context.drawImage(
+    picture.image,
+    origin.x,
+    origin.y,
+    picture.rect.width * scale,
+    picture.rect.height * scale
+  );
+  context.restore();
+}
+
+async function loadImage(src: string): Promise<PictureImage> {
   if (typeof document === 'undefined') {
     const response = await fetch(src);
     return createImageBitmap(await response.blob());
@@ -231,7 +278,7 @@ function drawBackground(
   height: number,
   pageColour: string,
   lineStyle: LineStyle,
-  options: ExportBoardOptions
+  options: ResolvedOptions
 ): void {
   const scale = exportScale(width, options);
   const { region } = options;
@@ -287,7 +334,7 @@ function drawGuide(
   context: DrawingContext,
   width: number,
   height: number,
-  options: ExportBoardOptions
+  options: ResolvedOptions
 ): void {
   if (!options.guideText) return;
 
@@ -322,7 +369,7 @@ function drawStroke(
   context: DrawingContext,
   width: number,
   height: number,
-  options: ExportBoardOptions,
+  options: ResolvedOptions,
   stroke: BoardStroke,
   points: Point[],
   colour = stroke.colour,
@@ -375,7 +422,7 @@ function drawAnimatedPen(
   context: DrawingContext,
   width: number,
   height: number,
-  options: ExportBoardOptions,
+  options: ResolvedOptions,
   stroke: BoardStroke,
   progress: number
 ): void {

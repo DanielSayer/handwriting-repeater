@@ -16,10 +16,12 @@
     cssTransform,
     panCamera,
     sameCamera,
+    screenToBoard,
     zoomCameraAt,
     type Camera
   } from '../lib/camera';
   import { fitBoardToViewport, pointFromPointer, smoothPath } from '../lib/drawing';
+  import { intersectRects } from '../lib/exportRegion';
   import { clamp, guideMetrics, guideBounds, guideBaselines, constrainGuide } from '../lib/guide';
   import {
     guideFontFamily,
@@ -61,6 +63,8 @@
   export let guideLayout: GuideLayout | null;
   export let editingGuide: boolean;
   export let editingBackground: boolean;
+  /** Bound out: the board area currently on screen, used to export what you can see. */
+  export let visibleRect: Rect;
   export let backgroundImage: BoardBackground | null;
   export let backgroundOpacity: number;
   export let timer: { startedAt: number; durationMinutes: number } | null;
@@ -142,6 +146,14 @@
     if (!sameCamera(clamped, camera)) camera = clamped;
   }
   $: transform = cameraTransform(camera, viewport, baseScale);
+  $: visibleRect = intersectRects(
+    {
+      ...screenToBoard({ x: 0, y: 0 }, transform),
+      width: viewportWidth / transform.scale,
+      height: viewportHeight / transform.scale
+    },
+    BOARD_BOUNDS
+  ) ?? { ...PAGE_RECT };
   // Page position inside the paper element, which starts at the board's top-left corner.
   const pageInPaper = `left:${PAGE_RECT.x - BOARD_BOUNDS.x}px;top:${PAGE_RECT.y - BOARD_BOUNDS.y}px;width:${PAGE_RECT.width}px;height:${PAGE_RECT.height}px`;
   $: handleSize = Math.max(24, 32 / Math.max(Number.EPSILON, transform.scale));

@@ -15,6 +15,7 @@
     PAGE_RECT
   } from './lib/constants';
   import { nextZoomLevel } from './lib/camera';
+  import type { ExportArea } from './lib/exportRegion';
   import {
     createReplaySchedule,
     playbackRateForSpeed,
@@ -25,7 +26,8 @@
     BoardStroke,
     LineStyle,
     PenType,
-    PersistedBoardState
+    PersistedBoardState,
+    Rect
   } from './lib/types';
 
   let strokes: BoardStroke[] = [];
@@ -51,6 +53,7 @@
   let guideFont = DEFAULT_BOARD_STATE.guideFont;
   let editingGuide = false;
   let editingBackground = false;
+  let visibleRect: Rect = { ...PAGE_RECT };
   let replaying = false;
   let replayNonce = 0;
   let replayTimer: ReturnType<typeof setTimeout> | undefined;
@@ -244,7 +247,7 @@
     backgroundError = '';
   }
 
-  async function exportBoard(): Promise<void> {
+  async function exportBoard(area: ExportArea): Promise<void> {
     if (exporting) return;
     exporting = true;
     exportError = '';
@@ -253,7 +256,7 @@
       strokes,
       backgroundImage,
       backgroundOpacity,
-      region: { ...PAGE_RECT },
+      region: area === 'view' ? { ...visibleRect } : ('content' as const),
       pageColour,
       lineStyle,
       guideText,
@@ -275,7 +278,8 @@
         has_guide: Boolean(guideText),
         guide_font: guideText ? guideFont : null,
         trace_enabled: traceMode,
-        playback_rate: playbackRate
+        playback_rate: playbackRate,
+        export_area: area
       });
     } catch (error) {
       exportError = 'The GIF could not be created. Try again with a shorter replay.';
@@ -354,6 +358,7 @@
             {guideFont}
             bind:editingGuide
             bind:editingBackground
+            bind:visibleRect
             bind:backgroundImage
             {backgroundOpacity}
             {timer}

@@ -4,6 +4,7 @@
   import Popover from './Popover.svelte';
   import { PAPER_OPTIONS } from '../lib/constants';
   import { BACKGROUND_IMAGE_ACCEPT } from '../lib/backgroundImage';
+  import type { ExportArea } from '../lib/exportRegion';
   import type { BoardBackground, LineStyle } from '../lib/types';
 
   export let lineStyle: LineStyle;
@@ -21,9 +22,9 @@
   export let onAdjustBackground: () => void;
   export let onStartTimer: (minutes: number) => void;
   export let onCancelTimer: () => void;
-  export let onExport: () => void;
+  export let onExport: (area: ExportArea) => void;
 
-  type Menu = 'lines' | 'paper' | 'picture' | 'timer';
+  type Menu = 'lines' | 'paper' | 'picture' | 'timer' | 'export';
   const LINE_OPTIONS: { value: LineStyle; label: string }[] = [
     { value: 'ruled', label: 'Ruled' },
     { value: 'dotted', label: 'Dots' },
@@ -48,6 +49,11 @@
     document.addEventListener('fullscreenchange', sync);
     return () => document.removeEventListener('fullscreenchange', sync);
   });
+
+  const EXPORT_OPTIONS: { area: ExportArea; label: string; hint: string }[] = [
+    { area: 'content', label: 'Everything', hint: 'All your writing, guide and picture' },
+    { area: 'view', label: 'What you can see', hint: 'Just the part of the board on screen' }
+  ];
 
   function toggle(next: Menu): void {
     menu = menu === next ? null : next;
@@ -267,15 +273,41 @@
   </nav>
 
   <div class="actions">
-    <button
-      class="btn"
-      on:click={onExport}
-      disabled={exporting || !canExport}
-      aria-busy={exporting}
-      title="Download the replay as an animated GIF"
+    <Popover
+      open={menu === 'export'}
+      label="Save GIF"
+      onClose={() => (menu = null)}
+      align="end"
+      width={280}
     >
-      <Icon name="download" /><span class="lbl">{exporting ? 'Saving…' : 'Save GIF'}</span>
-    </button>
+      <button
+        slot="trigger"
+        class="btn"
+        aria-expanded={menu === 'export'}
+        aria-haspopup="dialog"
+        on:click={() => toggle('export')}
+        disabled={exporting || !canExport}
+        aria-busy={exporting}
+        title="Download the replay as an animated GIF"
+      >
+        <Icon name="download" /><span class="lbl">{exporting ? 'Saving…' : 'Save GIF'}</span>
+      </button>
+      <h2 class="pop-title">Save GIF</h2>
+      <div class="list">
+        {#each EXPORT_OPTIONS as option (option.area)}
+          <button
+            class="pick area"
+            on:click={() => {
+              menu = null;
+              onExport(option.area);
+            }}
+          >
+            <strong>{option.label}</strong>
+            <small>{option.hint}</small>
+          </button>
+        {/each}
+      </div>
+    </Popover>
     <a
       class="btn"
       href="https://tally.so/r/J9NaAz"
@@ -387,6 +419,18 @@
   .list {
     display: grid;
     gap: 6px;
+  }
+  .area {
+    display: grid;
+    gap: 2px;
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 14px;
+  }
+  .area small {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
   }
   .bc {
     min-height: 48px;
