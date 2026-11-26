@@ -1,5 +1,6 @@
 import {
   BOARD_BOUNDS,
+  DEFAULT_CAMERA,
   PAGE_RECT,
   DEFAULT_BOARD_STATE,
   STORAGE_KEY,
@@ -95,7 +96,18 @@ export function parseBoardState(value: unknown): PersistedBoardState {
   if (numberInRange(value.penSize, 1, 100)) state.penSize = value.penSize;
   if (numberInRange(value.backgroundOpacity, 0, 1))
     state.backgroundOpacity = value.backgroundOpacity;
-  if (numberInRange(value.zoom, ZOOM_MIN, ZOOM_MAX)) state.zoom = value.zoom;
+  state.camera = { ...DEFAULT_CAMERA };
+  if (
+    record(value.camera) &&
+    numberInRange(value.camera.x, BOARD_BOUNDS.x, BOARD_BOUNDS.x + BOARD_BOUNDS.width) &&
+    numberInRange(value.camera.y, BOARD_BOUNDS.y, BOARD_BOUNDS.y + BOARD_BOUNDS.height) &&
+    numberInRange(value.camera.zoom, ZOOM_MIN, ZOOM_MAX)
+  ) {
+    state.camera = { x: value.camera.x, y: value.camera.y, zoom: value.camera.zoom };
+  } else if (numberInRange(value.zoom, 1, 2)) {
+    // Boards saved before panning stored only a zoom around the page centre.
+    state.camera.zoom = value.zoom;
+  }
   if (numberInRange(value.speed, -1, 5)) state.speed = value.speed;
   if (numberInRange(value.repeatCount, 1, 8)) state.repeatCount = Math.round(value.repeatCount);
   if (numberInRange(value.guideSize, 12, 160)) state.guideSize = value.guideSize;

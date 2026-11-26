@@ -9,11 +9,12 @@
   import {
     BOARD_STATE_VERSION,
     DEFAULT_BOARD_STATE,
+    DEFAULT_CAMERA,
     ZOOM_MAX,
     ZOOM_MIN,
-    ZOOM_STEP,
     PAGE_RECT
   } from './lib/constants';
+  import { nextZoomLevel } from './lib/camera';
   import { prepareBackgroundImage } from './lib/backgroundImage';
   import {
     createReplaySchedule,
@@ -40,7 +41,7 @@
   let penType: PenType = DEFAULT_BOARD_STATE.penType;
   let pageColour = DEFAULT_BOARD_STATE.pageColour;
   let lineStyle: LineStyle = DEFAULT_BOARD_STATE.lineStyle;
-  let zoom = DEFAULT_BOARD_STATE.zoom;
+  let camera = DEFAULT_BOARD_STATE.camera;
   let speed = DEFAULT_BOARD_STATE.speed;
   let loopMode = DEFAULT_BOARD_STATE.loopMode;
   let traceMode = DEFAULT_BOARD_STATE.traceMode;
@@ -70,7 +71,7 @@
     penType,
     pageColour,
     lineStyle,
-    zoom,
+    camera,
     speed,
     loopMode,
     traceMode,
@@ -96,7 +97,7 @@
     penType = saved.penType ?? penType;
     pageColour = saved.pageColour ?? pageColour;
     lineStyle = saved.lineStyle ?? lineStyle;
-    zoom = saved.zoom ?? zoom;
+    camera = saved.camera ?? camera;
     speed = saved.speed ?? speed;
     loopMode = saved.loopMode ?? loopMode;
     traceMode = saved.traceMode ?? traceMode;
@@ -294,7 +295,7 @@
   }
 
   function changeZoom(direction: 1 | -1): void {
-    zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom + direction * ZOOM_STEP));
+    camera = { ...camera, zoom: nextZoomLevel(camera.zoom, direction) };
   }
 </script>
 
@@ -332,7 +333,7 @@
             {penType}
             {pageColour}
             {lineStyle}
-            {zoom}
+            bind:camera
             {traceMode}
             {replaying}
             {replayNonce}
@@ -362,15 +363,21 @@
               class="btn icon"
               aria-label="Zoom out"
               title="Zoom out"
-              disabled={zoom <= ZOOM_MIN}
+              disabled={camera.zoom <= ZOOM_MIN}
               on:click={() => changeZoom(-1)}><Icon name="minus" size={18} /></button
             >
-            <span aria-live="polite">{Math.round(zoom * 100)}%</span>
+            <button
+              class="zoom-level"
+              title="Reset view"
+              aria-label={`Zoom ${Math.round(camera.zoom * 100)}%. Reset view`}
+              on:click={() => (camera = { ...DEFAULT_CAMERA })}
+              ><span aria-live="polite">{Math.round(camera.zoom * 100)}%</span></button
+            >
             <button
               class="btn icon"
               aria-label="Zoom in"
               title="Zoom in"
-              disabled={zoom >= ZOOM_MAX}
+              disabled={camera.zoom >= ZOOM_MAX}
               on:click={() => changeZoom(1)}><Icon name="plus" size={18} /></button
             >
           </div>
@@ -490,9 +497,19 @@
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
-  .zoom span {
-    min-width: 42px;
-    text-align: center;
+  .zoom-level {
+    min-width: 50px;
+    min-height: 36px;
+    padding: 0 4px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .zoom-level:hover {
+    background: rgba(0, 0, 0, 0.05);
   }
   .guide-edit {
     position: absolute;

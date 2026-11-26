@@ -5,7 +5,13 @@
   import TimerWidget from './TimerWidget.svelte';
   import { BACKGROUND_IMAGE_ACCEPT, MAX_BACKGROUND_FILE_SIZE } from '../lib/backgroundImage';
   import { BOARD_BOUNDS, PAGE_ASPECT_RATIO, PAGE_RECT } from '../lib/constants';
-  import { cameraTransform, centreCamera, cssTransform } from '../lib/camera';
+  import {
+    cameraTransform,
+    clampCamera,
+    cssTransform,
+    sameCamera,
+    type Camera
+  } from '../lib/camera';
   import { fitBoardToViewport, pointFromPointer, smoothPath } from '../lib/drawing';
   import { clamp, guideMetrics, guideBounds, guideBaselines, constrainGuide } from '../lib/guide';
   import {
@@ -35,7 +41,8 @@
   export let penType: PenType;
   export let pageColour: string;
   export let lineStyle: LineStyle;
-  export let zoom: number;
+  /** Bound: pan and zoom gestures update it; it is clamped to the board here. */
+  export let camera: Camera;
   export let traceMode: boolean;
   export let replaying: boolean;
   export let replayNonce: number;
@@ -57,6 +64,8 @@
   let boardStage: HTMLDivElement;
   let viewportWidth = PAGE_RECT.width;
   let viewportHeight = PAGE_RECT.height;
+  // Camera clamping waits for the real viewport size so a restored view is not disturbed.
+  let measured = false;
   let currentStroke: BoardStroke | null = null;
   let pendingPoints: Point[] = [];
   let strokeFrame: number | undefined;
@@ -97,7 +106,10 @@
   $: viewport = { width: viewportWidth, height: viewportHeight };
   $: baseScale =
     fitBoardToViewport(viewportWidth, viewportHeight, PAGE_ASPECT_RATIO).width / PAGE_RECT.width;
-  $: camera = centreCamera(PAGE_RECT, zoom);
+  $: if (measured) {
+    const clamped = clampCamera(camera, viewport, baseScale, BOARD_BOUNDS);
+    if (!sameCamera(clamped, camera)) camera = clamped;
+  }
   $: transform = cameraTransform(camera, viewport, baseScale);
   // Page position inside the paper element, which starts at the board's top-left corner.
   const pageInPaper = `left:${PAGE_RECT.x - BOARD_BOUNDS.x}px;top:${PAGE_RECT.y - BOARD_BOUNDS.y}px;width:${PAGE_RECT.width}px;height:${PAGE_RECT.height}px`;
@@ -109,6 +121,7 @@
       const rect = boardStage.getBoundingClientRect();
       viewportWidth = rect.width;
       viewportHeight = rect.height;
+      measured = rect.width > 0 && rect.height > 0;
     };
     const measureOnNextFrame = (): void => {
       if (resizeAnimationFrame !== undefined) cancelAnimationFrame(resizeAnimationFrame);

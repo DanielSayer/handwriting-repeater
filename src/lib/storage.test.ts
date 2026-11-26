@@ -89,6 +89,17 @@ describe('saved board validation', () => {
     expect(board.strokes).toEqual([]);
   });
 
+  it('restores a saved camera and migrates a legacy page zoom', () => {
+    const camera = { x: -1000, y: 900, zoom: 0.5 };
+    expect(parseBoardState({ camera }).camera).toEqual(camera);
+    expect(parseBoardState({ zoom: 1.5 }).camera).toEqual({ x: 480, y: 280, zoom: 1.5 });
+    expect(parseBoardState({ camera: { x: 99999, y: 0, zoom: 1 } }).camera).toEqual({
+      x: 480,
+      y: 280,
+      zoom: 1
+    });
+  });
+
   it('maps colours saved by the previous palette to the new one', () => {
     const board = parseBoardState({ penColour: '#EF6B4A', pageColour: '#fffdf7' });
     expect(board.penColour).toBe('#d8392f');

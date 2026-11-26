@@ -3,8 +3,14 @@ import {
   boardToScreen,
   cameraTransform,
   centreCamera,
+  clampCamera,
+  clampZoom,
   cssTransform,
-  screenToBoard
+  nextZoomLevel,
+  panCamera,
+  sameCamera,
+  screenToBoard,
+  zoomCameraAt
 } from './camera';
 
 const bounds = { x: 0, y: 0, width: 960, height: 560 };
@@ -38,5 +44,60 @@ describe('camera', () => {
     expect(cssTransform({ scale: 2, translateX: -10, translateY: 5 }, { x: -100, y: 50 })).toBe(
       'translate(-210px, 105px) scale(2)'
     );
+  });
+});
+
+describe('camera navigation', () => {
+  const board = { x: -1440, y: -840, width: 3840, height: 2240 };
+
+  it('steps through zoom levels', () => {
+    expect(nextZoomLevel(1, 1)).toBe(1.25);
+    expect(nextZoomLevel(1, -1)).toBe(0.75);
+    expect(nextZoomLevel(1.1, -1)).toBe(1);
+    expect(nextZoomLevel(4, 1)).toBe(4);
+    expect(nextZoomLevel(0.25, -1)).toBe(0.25);
+  });
+
+  it('clamps zoom and recovers from invalid values', () => {
+    expect(clampZoom(10)).toBe(4);
+    expect(clampZoom(0)).toBe(0.25);
+    expect(clampZoom(Number.NaN)).toBe(1);
+  });
+
+  it('pans opposite to the drag in board space', () => {
+    expect(panCamera({ x: 0, y: 0, zoom: 2 }, 100, -50, 0.5)).toEqual({ x: -100, y: 50, zoom: 2 });
+  });
+
+  it('keeps the point under the cursor fixed while zooming', () => {
+    const camera = { x: 480, y: 280, zoom: 1 };
+    const cursor = { x: 100, y: 60 };
+    const before = screenToBoard(cursor, cameraTransform(camera, viewport, 0.5));
+    const next = zoomCameraAt(camera, cursor, 2, viewport, 0.5);
+    const after = screenToBoard(cursor, cameraTransform(next, viewport, 0.5));
+    expect(next.zoom).toBe(2);
+    expect(after.x).toBeCloseTo(before.x);
+    expect(after.y).toBeCloseTo(before.y);
+  });
+
+  it('stops the view a margin past the board edge', () => {
+    // At zoom 1 and base scale 0.5 the viewport shows 960x560 board pixels; a 48px margin is 96.
+    expect(clampCamera({ x: -9999, y: 9999, zoom: 1 }, viewport, 0.5, board)).toEqual({
+      x: -1440 - 96 + 480,
+      y: 1400 + 96 - 280,
+      zoom: 1
+    });
+  });
+
+  it('centres the board when it is smaller than the viewport', () => {
+    expect(clampCamera({ x: 2000, y: 0, zoom: 0.25 }, viewport, 0.25, board)).toEqual({
+      x: 480,
+      y: 280,
+      zoom: 0.25
+    });
+  });
+
+  it('leaves an in-range camera unchanged', () => {
+    const camera = { x: 100, y: 200, zoom: 1.5 };
+    expect(sameCamera(clampCamera(camera, viewport, 0.5, board), camera)).toBe(true);
   });
 });

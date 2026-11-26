@@ -47,6 +47,13 @@ export interface Rect {
   height: number;
 }
 
+/** What the board viewport shows: the board point at its centre, and a zoom factor. */
+export interface Camera {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
 export interface PersistedBoardState {
   /** Storage schema version. Version 1 (absent) stored points as 0–1 page fractions. */
   version: number;
@@ -58,7 +65,7 @@ export interface PersistedBoardState {
   penType: PenType;
   pageColour: string;
   lineStyle: LineStyle;
-  zoom: number;
+  camera: Camera;
   speed: number;
   loopMode: boolean;
   traceMode: boolean;

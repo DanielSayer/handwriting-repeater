@@ -1,4 +1,4 @@
-import type { PaperOption, PersistedBoardState, Rect } from './types';
+import type { Camera, PaperOption, PersistedBoardState, Rect } from './types';
 import { DEFAULT_GUIDE_FONT } from './guideFonts';
 
 export const STORAGE_KEY = 'repeat-whiteboard-v1';
@@ -66,9 +66,16 @@ export const SPEED_OPTIONS = [
   { label: '2×', value: 5 }
 ] as const;
 
-export const ZOOM_MIN = 1;
-export const ZOOM_MAX = 2;
-export const ZOOM_STEP = 0.25;
+export const ZOOM_MIN = 0.25;
+export const ZOOM_MAX = 4;
+/** Stops used by the zoom buttons. Wheel and pinch zoom are continuous. */
+export const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4] as const;
+/** Zoom 1 fits the page to the viewport, centred on it. */
+export const DEFAULT_CAMERA: Readonly<Camera> = {
+  x: PAGE_RECT.x + PAGE_RECT.width / 2,
+  y: PAGE_RECT.y + PAGE_RECT.height / 2,
+  zoom: 1
+};
 
 export const DEFAULT_BOARD_STATE: PersistedBoardState = {
   version: BOARD_STATE_VERSION,
@@ -80,7 +87,7 @@ export const DEFAULT_BOARD_STATE: PersistedBoardState = {
   penType: 'marker',
   pageColour: PAPER_OPTIONS[0].value,
   lineStyle: 'ruled',
-  zoom: 1,
+  camera: { ...DEFAULT_CAMERA },
   speed: 3,
   loopMode: false,
   traceMode: false,
