@@ -37,6 +37,7 @@ interface AnalyticsEvents {
     guide_font: GuideFontId | null;
     trace_enabled: boolean;
     playback_rate: number;
+    export_area: 'content' | 'view';
   };
   gif_export_failed: {
     stroke_count: number;

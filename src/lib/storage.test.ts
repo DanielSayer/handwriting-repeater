@@ -9,7 +9,7 @@ const validStroke = {
   opacity: 1,
   points: [
     { x: 0, y: 0, elapsedMs: 0 },
-    { x: 1, y: 1, elapsedMs: 100 }
+    { x: 960, y: 560, elapsedMs: 100 }
   ]
 };
 
@@ -29,6 +29,7 @@ describe('saved board validation', () => {
   it('recovers valid settings while rejecting invalid shapes and values', () => {
     expect(
       parseBoardState({
+        version: 2,
         strokes: [null, validStroke, { ...validStroke, points: [{ x: NaN, y: 0 }] }],
         speed: 'fast',
         zoom: Infinity,
@@ -47,6 +48,71 @@ describe('saved board validation', () => {
     });
   });
 
+  it('converts version 1 page-fraction points into board pixels', () => {
+    const board = parseBoardState({
+      strokes: [
+        {
+          ...validStroke,
+          points: [
+            { x: 0.25, y: 0.5, elapsedMs: 0 },
+            { x: 1, y: 1, elapsedMs: 100 }
+          ]
+        },
+        validStroke
+      ]
+    });
+    expect(board.version).toBe(2);
+    expect(board.strokes).toEqual([
+      {
+        ...validStroke,
+        points: [
+          { x: 240, y: 280, elapsedMs: 0 },
+          { x: 960, y: 560, elapsedMs: 100 }
+        ]
+      }
+    ]);
+  });
+
+  it('rejects points outside the board', () => {
+    const board = parseBoardState({
+      version: 2,
+      strokes: [
+        {
+          ...validStroke,
+          points: [
+            { x: 0, y: 0 },
+            { x: 2401, y: 0 }
+          ]
+        }
+      ]
+    });
+    expect(board.strokes).toEqual([]);
+  });
+
+  it('restores a saved camera and migrates a legacy page zoom', () => {
+    const camera = { x: -1000, y: 900, zoom: 0.5 };
+    expect(parseBoardState({ camera }).camera).toEqual(camera);
+    expect(parseBoardState({ zoom: 1.5 }).camera).toEqual({ x: 480, y: 280, zoom: 1.5 });
+    expect(parseBoardState({ camera: { x: 99999, y: 0, zoom: 1 } }).camera).toEqual({
+      x: 480,
+      y: 280,
+      zoom: 1
+    });
+  });
+
+  it('keeps a valid picture position and drops an invalid one', () => {
+    const image = { src: 'data:image/png;base64,AAAA', name: 'a.png' };
+    const rect = { x: -200, y: 100, width: 300, height: 200 };
+    expect(parseBoardState({ backgroundImage: { ...image, rect } }).backgroundImage).toEqual({
+      ...image,
+      rect
+    });
+    expect(
+      parseBoardState({ backgroundImage: { ...image, rect: { ...rect, width: -1 } } })
+        .backgroundImage
+    ).toEqual(image);
+  });
+
   it('maps colours saved by the previous palette to the new one', () => {
     const board = parseBoardState({ penColour: '#EF6B4A', pageColour: '#fffdf7' });
     expect(board.penColour).toBe('#d8392f');
@@ -55,6 +121,7 @@ describe('saved board validation', () => {
 
   it('keeps strokes with duplicate IDs without crashing keyed rendering', () => {
     const board = parseBoardState({
+      version: 2,
       strokes: [validStroke, validStroke, { ...validStroke, id: 'one-duplicate' }]
     });
     expect(board.strokes).toHaveLength(3);

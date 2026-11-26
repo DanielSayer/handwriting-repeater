@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
   import AnimatedPen from './AnimatedPen.svelte';
-  import { BOARD_WIDTH, BOARD_HEIGHT } from '../lib/constants';
   import { smoothPath } from '../lib/drawing';
   import { createReplaySchedule, strokeReplayProgress } from '../lib/replay';
   import type { StrokeReplayTiming } from '../lib/replay';
@@ -25,7 +24,7 @@
   function pathFor(stroke: BoardStroke): string {
     let path = paths.get(stroke);
     if (path === undefined) {
-      path = smoothPath(stroke.points, BOARD_WIDTH, BOARD_HEIGHT);
+      path = smoothPath(stroke.points);
       paths.set(stroke, path);
     }
     return path;

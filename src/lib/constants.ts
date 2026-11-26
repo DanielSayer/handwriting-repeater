@@ -1,10 +1,21 @@
-import type { PaperOption, PersistedBoardState } from './types';
+import type { Camera, PaperOption, PersistedBoardState, Rect } from './types';
 import { DEFAULT_GUIDE_FONT } from './guideFonts';
 
 export const STORAGE_KEY = 'repeat-whiteboard-v1';
-export const BOARD_WIDTH = 960;
-export const BOARD_HEIGHT = 560;
-export const BOARD_ASPECT_RATIO = BOARD_WIDTH / BOARD_HEIGHT;
+/** The original fixed page. Board coordinates are measured from its top-left corner. */
+export const PAGE_WIDTH = 960;
+export const PAGE_HEIGHT = 560;
+export const PAGE_ASPECT_RATIO = PAGE_WIDTH / PAGE_HEIGHT;
+export const PAGE_RECT: Readonly<Rect> = { x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT };
+const BOARD_SCALE = 4;
+/** Whole drawable board, in board pixels: four pages each way, centred on the original page. */
+export const BOARD_BOUNDS: Readonly<Rect> = {
+  x: (-(BOARD_SCALE - 1) / 2) * PAGE_WIDTH,
+  y: (-(BOARD_SCALE - 1) / 2) * PAGE_HEIGHT,
+  width: BOARD_SCALE * PAGE_WIDTH,
+  height: BOARD_SCALE * PAGE_HEIGHT
+};
+export const BOARD_STATE_VERSION = 2;
 
 // Dry-erase marker palette.
 export const INK_COLOURS = [
@@ -55,11 +66,19 @@ export const SPEED_OPTIONS = [
   { label: '2×', value: 5 }
 ] as const;
 
-export const ZOOM_MIN = 1;
-export const ZOOM_MAX = 2;
-export const ZOOM_STEP = 0.25;
+export const ZOOM_MIN = 0.25;
+export const ZOOM_MAX = 4;
+/** Stops used by the zoom buttons. Wheel and pinch zoom are continuous. */
+export const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4] as const;
+/** Zoom 1 fits the page to the viewport, centred on it. */
+export const DEFAULT_CAMERA: Readonly<Camera> = {
+  x: PAGE_RECT.x + PAGE_RECT.width / 2,
+  y: PAGE_RECT.y + PAGE_RECT.height / 2,
+  zoom: 1
+};
 
 export const DEFAULT_BOARD_STATE: PersistedBoardState = {
+  version: BOARD_STATE_VERSION,
   strokes: [],
   backgroundImage: null,
   backgroundOpacity: 1,
@@ -68,7 +87,7 @@ export const DEFAULT_BOARD_STATE: PersistedBoardState = {
   penType: 'marker',
   pageColour: PAPER_OPTIONS[0].value,
   lineStyle: 'ruled',
-  zoom: 1,
+  camera: { ...DEFAULT_CAMERA },
   speed: 3,
   loopMode: false,
   traceMode: false,

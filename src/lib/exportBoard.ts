@@ -3,12 +3,20 @@ import { GIFEncoder, applyPalette, quantize } from 'gifenc';
 import { guideMetrics, guideBaselines } from './guide';
 import { guideFontFamily, guideLetterSpacing, loadGuideFont } from './guideFonts';
 import { createReplaySchedule, replayDuration, strokeReplayProgress } from './replay';
-import type { BoardStroke, ExportBoardOptions, LineStyle, Point } from './types';
+import { containRect } from './backgroundImage';
+import { BOARD_BOUNDS, PAGE_RECT } from './constants';
+import { contentRegion, exportSize, strokeBounds } from './exportRegion';
+import type { BoardStroke, ExportBoardOptions, LineStyle, Point, Rect } from './types';
 
 type DrawingCanvas = HTMLCanvasElement | OffscreenCanvas;
 type DrawingContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+type ResolvedOptions = Omit<ExportBoardOptions, 'region'> & { region: Rect };
+type PictureImage = HTMLImageElement | ImageBitmap;
+interface Picture {
+  image: PictureImage;
+  rect: Rect;
+}
 
-const EXPORT_WIDTH = 960;
 const TARGET_FRAME_DELAY_MS = 80;
 const MAX_GIF_FRAMES = 180;
 const FINAL_FRAME_OFFSET_SECONDS = 0.001;
@@ -18,10 +26,11 @@ export interface GifFrame {
   delayMs: number;
 }
 
-export async function encodeBoardGif(options: ExportBoardOptions): Promise<Blob> {
-  if (options.guideText) await loadGuideFont(options.guideFont);
-  const width = EXPORT_WIDTH;
-  const height = Math.round(width * (options.boardHeight / options.boardWidth));
+export async function encodeBoardGif(input: ExportBoardOptions): Promise<Blob> {
+  if (input.guideText) await loadGuideFont(input.guideFont);
+  const picture = input.backgroundImage ? await loadPicture(input.backgroundImage) : null;
+  const options: ResolvedOptions = { ...input, region: resolveRegion(input, picture) };
+  const { width, height } = exportSize(options.region);
   const canvas = createCanvas(width, height);
   const context = getCanvasContext(canvas);
   const baseCanvas = createCanvas(width, height);
@@ -30,7 +39,7 @@ export async function encodeBoardGif(options: ExportBoardOptions): Promise<Blob>
   const frames = createGifFramePlan(replayDuration(schedule));
 
   drawBackground(baseContext, width, height, options.pageColour, options.lineStyle, options);
-  await drawBackgroundImage(baseContext, width, height, options);
+  if (picture) drawPicture(baseContext, width, options, picture);
   drawGuide(baseContext, width, height, options);
 
   renderFrame(context, baseCanvas, width, height, options, schedule, frames.at(-1)!.elapsedSeconds);
@@ -53,6 +62,7 @@ export async function encodeBoardGif(options: ExportBoardOptions): Promise<Blob>
   }
 
   gif.finish();
+  if (picture && 'close' in picture.image) picture.image.close();
   return new Blob([gif.bytes()], { type: 'image/gif' });
 }
 
@@ -109,7 +119,7 @@ function renderFrame(
   baseCanvas: DrawingCanvas,
   width: number,
   height: number,
-  options: ExportBoardOptions,
+  options: ResolvedOptions,
   schedule: ReturnType<typeof createReplaySchedule>,
   elapsedSeconds: number
 ): void {
@@ -159,6 +169,20 @@ function includeAnimationColours(palette: number[][]): number[][] {
   ];
 }
 
+/** Board pixels to export pixels. */
+function exportScale(width: number, options: ResolvedOptions): number {
+  return width / options.region.width;
+}
+
+function toExport(point: Point, scale: number, region: Rect): Point {
+  return { x: (point.x - region.x) * scale, y: (point.y - region.y) * scale };
+}
+
+/** First board coordinate at or after `start` on a grid of `step` offset by `phase`. */
+function firstGridLine(start: number, phase: number, step: number): number {
+  return phase + Math.ceil((start - phase) / step) * step;
+}
+
 function createCanvas(width: number, height: number): DrawingCanvas {
   if (typeof document === 'undefined') return new OffscreenCanvas(width, height);
   const canvas = document.createElement('canvas');
@@ -173,35 +197,69 @@ function getCanvasContext(canvas: DrawingCanvas): DrawingContext {
   return context;
 }
 
-async function drawBackgroundImage(
-  context: DrawingContext,
-  width: number,
-  height: number,
-  options: ExportBoardOptions
-): Promise<void> {
-  if (!options.backgroundImage) return;
-
-  const image = await loadImage(options.backgroundImage.src);
+async function loadPicture(background: NonNullable<ExportBoardOptions['backgroundImage']>) {
+  const image = await loadImage(background.src);
   const naturalWidth = 'naturalWidth' in image ? image.naturalWidth : image.width;
   const naturalHeight = 'naturalHeight' in image ? image.naturalHeight : image.height;
-  const scale = Math.min(width / naturalWidth, height / naturalHeight);
-  const imageWidth = naturalWidth * scale;
-  const imageHeight = naturalHeight * scale;
+  // Older boards have no picture rect: the picture is contained within the page.
+  const rect = background.rect ?? containRect(naturalWidth, naturalHeight, PAGE_RECT);
+  return { image, rect } satisfies Picture;
+}
 
+function resolveRegion(options: ExportBoardOptions, picture: Picture | null): Rect {
+  if (options.region !== 'content') return options.region;
+  return contentRegion(
+    [strokeBounds(options.strokes), guideRect(options), picture?.rect],
+    BOARD_BOUNDS,
+    PAGE_RECT
+  );
+}
+
+/** Box around the guide text, in board pixels. */
+function guideRect(options: ExportBoardOptions): Rect | null {
+  if (!options.guideText) return null;
+  const context = getCanvasContext(createCanvas(1, 1));
+  const metrics = guideMetrics(
+    context,
+    options.guideText,
+    options.repeatCount,
+    options.guideSize,
+    options.guideFont
+  );
+  const rows = guideBaselines(
+    options.guideText,
+    options.repeatCount,
+    options.guideLayout ?? null,
+    metrics
+  );
+  if (!rows.length) return null;
+  const top = Math.min(...rows.map((row) => row.y)) - metrics.ascent;
+  const bottom = Math.max(...rows.map((row) => row.y)) + metrics.descent;
+  const left = Math.min(...rows.map((row) => row.x));
+  return { x: left, y: top, width: metrics.width, height: bottom - top };
+}
+
+function drawPicture(
+  context: DrawingContext,
+  width: number,
+  options: ResolvedOptions,
+  picture: Picture
+): void {
+  const scale = exportScale(width, options);
+  const origin = toExport(picture.rect, scale, options.region);
   context.save();
   context.globalAlpha = options.backgroundOpacity;
   context.drawImage(
-    image,
-    (width - imageWidth) / 2,
-    (height - imageHeight) / 2,
-    imageWidth,
-    imageHeight
+    picture.image,
+    origin.x,
+    origin.y,
+    picture.rect.width * scale,
+    picture.rect.height * scale
   );
   context.restore();
-  if ('close' in image) image.close();
 }
 
-async function loadImage(src: string): Promise<HTMLImageElement | ImageBitmap> {
+async function loadImage(src: string): Promise<PictureImage> {
   if (typeof document === 'undefined') {
     const response = await fetch(src);
     return createImageBitmap(await response.blob());
@@ -220,9 +278,12 @@ function drawBackground(
   height: number,
   pageColour: string,
   lineStyle: LineStyle,
-  options: ExportBoardOptions
+  options: ResolvedOptions
 ): void {
-  const scale = width / options.boardWidth;
+  const scale = exportScale(width, options);
+  const { region } = options;
+  // Lines are anchored to the board origin so they stay put when the region moves.
+  const ruledStart = (firstGridLine(region.y, 74, 92) - region.y) * scale;
   context.fillStyle = pageColour;
   context.fillRect(0, 0, width, height);
   context.fillStyle = '#a8c9df';
@@ -230,7 +291,7 @@ function drawBackground(
   context.lineWidth = 2 * scale;
 
   if (lineStyle === 'ruled') {
-    for (let y = 74 * scale; y < height; y += 92 * scale) {
+    for (let y = ruledStart; y < height; y += 92 * scale) {
       context.beginPath();
       context.moveTo(0, y);
       context.lineTo(width, y);
@@ -239,8 +300,9 @@ function drawBackground(
   }
 
   if (lineStyle === 'dotted') {
-    for (let y = 74 * scale; y < height; y += 92 * scale) {
-      for (let x = 0; x < width; x += 16 * scale) {
+    const dotStart = (firstGridLine(region.x, 0, 16) - region.x) * scale;
+    for (let y = ruledStart; y < height; y += 92 * scale) {
+      for (let x = dotStart; x < width; x += 16 * scale) {
         context.beginPath();
         context.arc(x, y, 1.5 * scale, 0, Math.PI * 2);
         context.fill();
@@ -252,13 +314,13 @@ function drawBackground(
     context.save();
     context.globalAlpha = 0.65;
     context.lineWidth = scale;
-    for (let x = 0; x < width; x += 48 * scale) {
+    for (let x = (firstGridLine(region.x, 0, 48) - region.x) * scale; x < width; x += 48 * scale) {
       context.beginPath();
       context.moveTo(x, 0);
       context.lineTo(x, height);
       context.stroke();
     }
-    for (let y = 0; y < height; y += 48 * scale) {
+    for (let y = (firstGridLine(region.y, 0, 48) - region.y) * scale; y < height; y += 48 * scale) {
       context.beginPath();
       context.moveTo(0, y);
       context.lineTo(width, y);
@@ -272,7 +334,7 @@ function drawGuide(
   context: DrawingContext,
   width: number,
   height: number,
-  options: ExportBoardOptions
+  options: ResolvedOptions
 ): void {
   if (!options.guideText) return;
 
@@ -286,7 +348,9 @@ function drawGuide(
     options.guideSize,
     options.guideFont
   );
-  context.scale(width / options.boardWidth, height / options.boardHeight);
+  const scale = exportScale(width, options);
+  context.scale(scale, scale);
+  context.translate(-options.region.x, -options.region.y);
   context.font = `${options.guideSize}px ${guideFontFamily(options.guideFont)}`;
   context.textBaseline = 'alphabetic';
   context.letterSpacing = `${guideLetterSpacing(options.guideFont, options.guideSize)}px`;
@@ -305,7 +369,7 @@ function drawStroke(
   context: DrawingContext,
   width: number,
   height: number,
-  options: ExportBoardOptions,
+  options: ResolvedOptions,
   stroke: BoardStroke,
   points: Point[],
   colour = stroke.colour,
@@ -313,7 +377,8 @@ function drawStroke(
 ): void {
   if (points.length < 2) return;
 
-  const scaledPoints = points.map((point) => ({ x: point.x * width, y: point.y * height }));
+  const scale = exportScale(width, options);
+  const scaledPoints = points.map((point) => toExport(point, scale, options.region));
   context.save();
   context.beginPath();
   context.moveTo(scaledPoints[0].x, scaledPoints[0].y);
@@ -331,7 +396,7 @@ function drawStroke(
   context.lineTo(last.x, last.y);
   context.strokeStyle = colour;
   context.globalAlpha = opacity;
-  context.lineWidth = stroke.width * (width / options.boardWidth);
+  context.lineWidth = stroke.width * scale;
   context.lineCap = 'round';
   context.lineJoin = 'round';
   context.stroke();
@@ -357,7 +422,7 @@ function drawAnimatedPen(
   context: DrawingContext,
   width: number,
   height: number,
-  options: ExportBoardOptions,
+  options: ResolvedOptions,
   stroke: BoardStroke,
   progress: number
 ): void {
@@ -366,10 +431,11 @@ function drawAnimatedPen(
 
   const tangentAngle = Math.atan2(position.tangentY, position.tangentX) * (180 / Math.PI);
   const rotation = -55 + Math.max(-45, Math.min(45, tangentAngle)) * 0.18;
-  const scale = width / options.boardWidth;
+  const scale = exportScale(width, options);
+  const origin = toExport(position, scale, options.region);
 
   context.save();
-  context.translate(position.x * width, position.y * height);
+  context.translate(origin.x, origin.y);
   context.rotate(rotation * (Math.PI / 180));
   context.scale(scale, scale);
   context.lineJoin = 'round';

@@ -1,11 +1,26 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import Dropzone from 'svelte-file-dropzone';
   import StrokeLayer from './StrokeLayer.svelte';
-  import TimerWidget from './TimerWidget.svelte';
-  import { BACKGROUND_IMAGE_ACCEPT, MAX_BACKGROUND_FILE_SIZE } from '../lib/backgroundImage';
-  import { BOARD_ASPECT_RATIO, BOARD_HEIGHT, BOARD_WIDTH } from '../lib/constants';
+  import {
+    BACKGROUND_IMAGE_ACCEPT,
+    MAX_BACKGROUND_FILE_SIZE,
+    containRect,
+    moveRect,
+    scaleRect
+  } from '../lib/backgroundImage';
+  import { BOARD_BOUNDS, PAGE_ASPECT_RATIO, PAGE_RECT } from '../lib/constants';
+  import {
+    cameraTransform,
+    clampCamera,
+    cssTransform,
+    panCamera,
+    sameCamera,
+    screenToBoard,
+    zoomCameraAt,
+    type Camera
+  } from '../lib/camera';
   import { fitBoardToViewport, pointFromPointer, smoothPath } from '../lib/drawing';
+  import { intersectRects } from '../lib/exportRegion';
   import { clamp, guideMetrics, guideBounds, guideBaselines, constrainGuide } from '../lib/guide';
   import {
     guideFontFamily,
@@ -19,13 +34,9 @@
     GuideLayout,
     LineStyle,
     PenType,
-    Point
+    Point,
+    Rect
   } from '../lib/types';
-
-  interface BackgroundDropDetail {
-    acceptedFiles: File[];
-    fileRejections: unknown[];
-  }
 
   export let strokes: BoardStroke[];
   export let penColour: string;
@@ -33,7 +44,8 @@
   export let penType: PenType;
   export let pageColour: string;
   export let lineStyle: LineStyle;
-  export let zoom: number;
+  /** Bound: pan and zoom gestures update it; it is clamped to the board here. */
+  export let camera: Camera;
   export let traceMode: boolean;
   export let replaying: boolean;
   export let replayNonce: number;
@@ -44,39 +56,63 @@
   export let guideSize: number;
   export let guideLayout: GuideLayout | null;
   export let editingGuide: boolean;
+  export let editingBackground: boolean;
+  /** Bound out: the board area currently on screen, used to export what you can see. */
+  export let visibleRect: Rect;
   export let backgroundImage: BoardBackground | null;
   export let backgroundOpacity: number;
   export let timer: { startedAt: number; durationMinutes: number } | null;
   export let onStrokeComplete: (stroke: BoardStroke) => void;
-  export let onResize: (width: number, height: number) => void;
   export let onBackgroundSelected: (file: File) => void;
   export let onBackgroundError: (message: string) => void;
 
   let svg: SVGSVGElement;
   let boardStage: HTMLDivElement;
-  let viewportWidth = BOARD_WIDTH;
-  let viewportHeight = BOARD_HEIGHT;
+  let viewportWidth = PAGE_RECT.width;
+  let viewportHeight = PAGE_RECT.height;
+  // Camera clamping waits for the real viewport size so a restored view is not disturbed.
+  let measured = false;
   let currentStroke: BoardStroke | null = null;
-  let currentStrokeStartedAt = 0;
-  let drawing = false;
-  let activePointer: number | null = null;
   let pendingPoints: Point[] = [];
   let strokeFrame: number | undefined;
   let backgroundDragActive = false;
+  // dragenter/dragleave also fire for child elements; count them to know when the drag leaves.
+  let dragDepth = 0;
   let resizeAnimationFrame: number | undefined;
   let measureContext: CanvasRenderingContext2D | null = null;
   let loadedFont: GuideFontId | null = null;
   let fontError = false;
   let requestedFont: GuideFontId | null = null;
-  let guideGesture: {
-    pointer: number;
-    x: number;
-    y: number;
-    layout: GuideLayout;
-    size: number;
-    scale: boolean;
-    bounds: { x: number; y: number; width: number; height: number };
-  } | null = null;
+  /** The single pointer gesture in progress. Other pointers are ignored until it ends. */
+  type Gesture =
+    | { kind: 'stroke'; pointer: number; startedAt: number }
+    | { kind: 'pan'; pointer: number; x: number; y: number }
+    | { kind: 'background'; pointer: number; x: number; y: number; rect: Rect; scale: boolean }
+    | {
+        kind: 'pinch';
+        pointer: number;
+        second: number;
+        camera: Camera;
+        midpoint: Point;
+        distance: number;
+      }
+    | {
+        kind: 'guide';
+        pointer: number;
+        x: number;
+        y: number;
+        layout: GuideLayout;
+        size: number;
+        scale: boolean;
+        bounds: Rect;
+      };
+  let gesture: Gesture | null = null;
+  /** Active touch points (client coordinates), used to detect and track pinches. */
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- read only in handlers, never rendered
+  const touches = new Map<number, Point>();
+  let spaceHeld = false;
+  let viewportElement: HTMLDivElement;
+  let backgroundElement: HTMLImageElement | undefined;
 
   $: if (guideText && measureContext) requestFont(guideFont);
   $: fontReady = loadedFont === guideFont;
@@ -88,10 +124,35 @@
   $: guideRows = metrics ? guideBaselines(guideText, repeatCount, guideLayout, metrics) : [];
   $: bounds = metrics && guideLayout ? guideBounds(metrics, guideLayout) : null;
   $: if (editingGuide && fontReady && measureContext && guideText && repeatCount) editGuide();
-  $: if (editingGuide || replaying) cancelStroke();
+  $: if (editingGuide || editingBackground || replaying) cancelStroke();
   $: if (!editingGuide || replaying) cancelGuideGesture();
-  $: paperSize = fitBoardToViewport(viewportWidth, viewportHeight, BOARD_ASPECT_RATIO);
-  $: handleSize = Math.max(24, (32 * BOARD_WIDTH) / Math.max(1, paperSize.width * zoom));
+  $: if (!editingBackground || replaying) cancelBackgroundGesture();
+  $: if (editingBackground && !backgroundImage) editingBackground = false;
+  $: if (editingBackground && backgroundImage && !backgroundImage.rect) placeBackground();
+  $: backgroundRect = backgroundImage?.rect;
+  $: backgroundStyle = backgroundRect
+    ? `left:${backgroundRect.x - BOARD_BOUNDS.x}px;top:${backgroundRect.y - BOARD_BOUNDS.y}px;width:${backgroundRect.width}px;height:${backgroundRect.height}px`
+    : pageInPaper;
+  // Zoom 1 fits the original page to the stage. The board extends beyond it on every side.
+  $: viewport = { width: viewportWidth, height: viewportHeight };
+  $: baseScale =
+    fitBoardToViewport(viewportWidth, viewportHeight, PAGE_ASPECT_RATIO).width / PAGE_RECT.width;
+  $: if (measured) {
+    const clamped = clampCamera(camera, viewport, baseScale, BOARD_BOUNDS);
+    if (!sameCamera(clamped, camera)) camera = clamped;
+  }
+  $: transform = cameraTransform(camera, viewport, baseScale);
+  $: visibleRect = intersectRects(
+    {
+      ...screenToBoard({ x: 0, y: 0 }, transform),
+      width: viewportWidth / transform.scale,
+      height: viewportHeight / transform.scale
+    },
+    BOARD_BOUNDS
+  ) ?? { ...PAGE_RECT };
+  // Page position inside the paper element, which starts at the board's top-left corner.
+  const pageInPaper = `left:${PAGE_RECT.x - BOARD_BOUNDS.x}px;top:${PAGE_RECT.y - BOARD_BOUNDS.y}px;width:${PAGE_RECT.width}px;height:${PAGE_RECT.height}px`;
+  $: handleSize = Math.max(24, 32 / Math.max(Number.EPSILON, transform.scale));
 
   onMount(() => {
     measureContext = document.createElement('canvas').getContext('2d');
@@ -99,6 +160,7 @@
       const rect = boardStage.getBoundingClientRect();
       viewportWidth = rect.width;
       viewportHeight = rect.height;
+      measured = rect.width > 0 && rect.height > 0;
     };
     const measureOnNextFrame = (): void => {
       if (resizeAnimationFrame !== undefined) cancelAnimationFrame(resizeAnimationFrame);
@@ -107,12 +169,14 @@
     const observer = new ResizeObserver(measureViewport);
 
     observer.observe(boardStage);
+    // Non-passive so the page does not scroll or zoom while the board pans.
+    viewportElement.addEventListener('wheel', handleWheel, { passive: false });
     window.addEventListener('resize', measureOnNextFrame);
     document.addEventListener('fullscreenchange', measureOnNextFrame);
     measureViewport();
-    onResize(BOARD_WIDTH, BOARD_HEIGHT);
     return () => {
       observer.disconnect();
+      viewportElement.removeEventListener('wheel', handleWheel);
       window.removeEventListener('resize', measureOnNextFrame);
       document.removeEventListener('fullscreenchange', measureOnNextFrame);
       if (resizeAnimationFrame !== undefined) cancelAnimationFrame(resizeAnimationFrame);
@@ -132,38 +196,219 @@
     }
   }
 
-  function startStroke(event: PointerEvent): void {
+  function handlePointerDown(event: PointerEvent): void {
     svg.focus({ preventScroll: true });
-    if (editingGuide) {
-      startGuideGesture(event);
-      return;
+    if (event.pointerType === 'touch') {
+      touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      // A second finger turns a finger stroke or guide drag into a pinch. Pen strokes are kept.
+      if (touches.size === 2 && (!gesture || touches.has(gesture.pointer))) {
+        startPinch(event);
+        return;
+      }
     }
-    if (event.button !== 0 || replaying || activePointer !== null) return;
-    activePointer = event.pointerId;
-    svg.setPointerCapture(event.pointerId);
-    drawing = true;
-    currentStrokeStartedAt = event.timeStamp;
+    if (gesture) return;
+    if (isPanStart(event)) startPan(event);
+    else if (editingGuide) startGuideGesture(event);
+    else if (editingBackground) startBackgroundGesture(event);
+    else startStroke(event);
+  }
+
+  function handlePointerMove(event: PointerEvent): void {
+    if (touches.has(event.pointerId))
+      touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (!gesture || !ownsPointer(gesture, event.pointerId)) return;
+    if (gesture.kind === 'pinch') movePinch(gesture);
+    else if (gesture.kind === 'pan') movePan(event, gesture);
+    else if (gesture.kind === 'guide') moveGuideGesture(event, gesture);
+    else if (gesture.kind === 'background') moveBackgroundGesture(event, gesture);
+    else moveStroke(event, gesture.startedAt);
+  }
+
+  function handlePointerUp(event: PointerEvent): void {
+    touches.delete(event.pointerId);
+    if (!gesture || !ownsPointer(gesture, event.pointerId)) return;
+    if (gesture.kind === 'stroke') endStroke(event, gesture.startedAt);
+    else endGesture();
+  }
+
+  function handlePointerCancel(event: PointerEvent): void {
+    touches.delete(event.pointerId);
+    if (!gesture || !ownsPointer(gesture, event.pointerId)) return;
+    if (gesture.kind === 'stroke') cancelStroke();
+    else {
+      restoreEdit(gesture);
+      endGesture();
+    }
+  }
+
+  function ownsPointer(current: Gesture, pointer: number): boolean {
+    return current.pointer === pointer || (current.kind === 'pinch' && current.second === pointer);
+  }
+
+  function capture(pointer: number): void {
+    try {
+      viewportElement.setPointerCapture(pointer);
+    } catch {
+      // The pointer may already be gone (e.g. a lifted finger); the gesture still works.
+    }
+  }
+
+  function beginGesture(event: PointerEvent, next: Gesture): void {
+    gesture = next;
+    capture(event.pointerId);
+  }
+
+  /** Clear the gesture before releasing capture so `lostpointercapture` sees no gesture. */
+  function endGesture(): void {
+    const ended = gesture;
+    gesture = null;
+    if (!ended) return;
+    const pointers = ended.kind === 'pinch' ? [ended.pointer, ended.second] : [ended.pointer];
+    for (const pointer of pointers) {
+      if (viewportElement?.hasPointerCapture(pointer))
+        viewportElement.releasePointerCapture(pointer);
+    }
+  }
+
+  /** Undo an interrupted guide or picture drag. */
+  function restoreEdit(interrupted: Gesture): void {
+    if (interrupted.kind === 'guide') {
+      guideLayout = interrupted.layout;
+      guideSize = interrupted.size;
+    } else if (interrupted.kind === 'background') setBackgroundRect(interrupted.rect);
+  }
+
+  function viewportPoint(clientX: number, clientY: number): Point {
+    const rect = viewportElement.getBoundingClientRect();
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  /** Right or middle drag pans; so does a left drag while Space is held. */
+  function isPanStart(event: PointerEvent): boolean {
+    return event.button === 1 || event.button === 2 || (event.button === 0 && spaceHeld);
+  }
+
+  function startPan(event: PointerEvent): void {
+    event.preventDefault();
+    beginGesture(event, {
+      kind: 'pan',
+      pointer: event.pointerId,
+      x: event.clientX,
+      y: event.clientY
+    });
+  }
+
+  function movePan(event: PointerEvent, pan: Extract<Gesture, { kind: 'pan' }>): void {
+    camera = panCamera(camera, event.clientX - pan.x, event.clientY - pan.y, baseScale);
+    pan.x = event.clientX;
+    pan.y = event.clientY;
+  }
+
+  function startPinch(event: PointerEvent): void {
+    // Take over from the first finger's gesture without releasing its pointer capture.
+    if (gesture?.kind === 'stroke') discardStroke();
+    else if (gesture) restoreEdit(gesture);
+    const [first, second] = [...touches.entries()];
+    const midpoint = viewportPoint((first[1].x + second[1].x) / 2, (first[1].y + second[1].y) / 2);
+    gesture = {
+      kind: 'pinch',
+      pointer: first[0],
+      second: second[0],
+      camera,
+      midpoint,
+      distance: Math.max(1, Math.hypot(first[1].x - second[1].x, first[1].y - second[1].y))
+    };
+    capture(first[0]);
+    capture(event.pointerId);
+  }
+
+  function movePinch(pinch: Extract<Gesture, { kind: 'pinch' }>): void {
+    const first = touches.get(pinch.pointer);
+    const second = touches.get(pinch.second);
+    if (!first || !second) return;
+    const midpoint = viewportPoint((first.x + second.x) / 2, (first.y + second.y) / 2);
+    const distance = Math.hypot(first.x - second.x, first.y - second.y);
+    // Zoom around where the pinch started, then follow the fingers as they move together.
+    const zoomed = zoomCameraAt(
+      pinch.camera,
+      pinch.midpoint,
+      pinch.camera.zoom * (distance / pinch.distance),
+      viewport,
+      baseScale
+    );
+    camera = panCamera(
+      zoomed,
+      midpoint.x - pinch.midpoint.x,
+      midpoint.y - pinch.midpoint.y,
+      baseScale
+    );
+  }
+
+  function handleWheel(event: WheelEvent): void {
+    event.preventDefault();
+    const unit =
+      event.deltaMode === WheelEvent.DOM_DELTA_LINE
+        ? 16
+        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+          ? viewportHeight
+          : 1;
+    const dx = event.deltaX * unit;
+    const dy = event.deltaY * unit;
+    // Trackpad pinches arrive as ctrl+wheel. Limit each step so a mouse notch is ~20%.
+    if (event.ctrlKey || event.metaKey) {
+      const factor = Math.exp(-clamp(dy, -25, 25) * 0.01);
+      camera = zoomCameraAt(
+        camera,
+        viewportPoint(event.clientX, event.clientY),
+        camera.zoom * factor,
+        viewport,
+        baseScale
+      );
+    } else if (event.shiftKey && dx === 0) {
+      camera = panCamera(camera, -dy, 0, baseScale);
+    } else {
+      camera = panCamera(camera, -dx, -dy, baseScale);
+    }
+  }
+
+  function isEditable(target: EventTarget | null): boolean {
+    return (
+      target instanceof HTMLElement &&
+      (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(target.tagName))
+    );
+  }
+
+  function handleKeyDown(event: KeyboardEvent): void {
+    if (event.code !== 'Space' || isEditable(event.target)) return;
+    if (event.target !== document.body && !viewportElement.contains(event.target as Node)) return;
+    event.preventDefault();
+    spaceHeld = true;
+  }
+
+  function handleKeyUp(event: KeyboardEvent): void {
+    if (event.code === 'Space') spaceHeld = false;
+  }
+
+  function startStroke(event: PointerEvent): void {
+    if (event.button !== 0 || replaying || !svg.contains(event.target as Node)) return;
+    beginGesture(event, { kind: 'stroke', pointer: event.pointerId, startedAt: event.timeStamp });
     currentStroke = {
       id: crypto.randomUUID(),
       colour: penColour,
       width: penSize,
       opacity: penType === 'pencil' ? 0.55 : 1,
-      points: [{ ...pointFromPointer(event, svg), elapsedMs: 0 }]
+      points: [{ ...pointFromPointer(event, svg, BOARD_BOUNDS), elapsedMs: 0 }]
     };
   }
 
-  function moveStroke(event: PointerEvent): void {
-    if (guideGesture) {
-      moveGuideGesture(event);
-      return;
-    }
-    if (!drawing || !currentStroke || event.pointerId !== activePointer) return;
+  function moveStroke(event: PointerEvent, startedAt: number): void {
+    if (!currentStroke) return;
     const coalescedEvents = event.getCoalescedEvents?.();
     const pointerEvents = coalescedEvents?.length ? coalescedEvents : [event];
     pendingPoints.push(
       ...pointerEvents.map((pointerEvent) => ({
-        ...pointFromPointer(pointerEvent, svg),
-        elapsedMs: Math.max(0, pointerEvent.timeStamp - currentStrokeStartedAt)
+        ...pointFromPointer(pointerEvent, svg, BOARD_BOUNDS),
+        elapsedMs: Math.max(0, pointerEvent.timeStamp - startedAt)
       }))
     );
     strokeFrame ??= requestAnimationFrame(flushStroke);
@@ -178,63 +423,117 @@
     pendingPoints = [];
   }
 
-  function cancelStroke(): void {
+  function discardStroke(): void {
     if (strokeFrame !== undefined) cancelAnimationFrame(strokeFrame);
     strokeFrame = undefined;
     pendingPoints = [];
     currentStroke = null;
-    drawing = false;
-    const pointer = activePointer;
-    activePointer = null;
-    if (pointer !== null && svg?.hasPointerCapture(pointer)) svg.releasePointerCapture(pointer);
   }
 
-  function handlePointerCancel(event: PointerEvent): void {
-    if (event.pointerId === guideGesture?.pointer) {
-      guideLayout = guideGesture.layout;
-      guideSize = guideGesture.size;
-      cancelGuideGesture();
-    }
-    if (event.pointerId === activePointer) cancelStroke();
+  function cancelStroke(): void {
+    discardStroke();
+    if (gesture?.kind === 'stroke') endGesture();
   }
 
-  function endStroke(event: PointerEvent): void {
-    if (event.pointerId === guideGesture?.pointer) {
-      cancelGuideGesture();
-      return;
-    }
-    if (!drawing || !currentStroke || event.pointerId !== activePointer) return;
+  function endStroke(event: PointerEvent, startedAt: number): void {
     flushStroke();
-    activePointer = null;
-    if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+    endGesture();
+    const stroke = currentStroke;
+    currentStroke = null;
+    if (!stroke) return;
 
-    if (currentStroke.points.length === 1) {
-      if (event.pointerType === 'mouse') {
-        currentStroke = null;
-        drawing = false;
-        return;
-      }
-      const point = currentStroke.points[0];
-      currentStroke.points = [
+    if (stroke.points.length === 1) {
+      if (event.pointerType === 'mouse') return;
+      // Nudge a tap into a tiny segment so it renders as a dot, staying inside the board.
+      const point = stroke.points[0];
+      const nudge = 0.1;
+      stroke.points = [
         point,
         {
-          x: point.x >= 1 ? point.x - 0.0001 : point.x + 0.0001,
-          y: point.y >= 1 ? point.y - 0.0001 : point.y + 0.0001,
-          elapsedMs: Math.max(16, event.timeStamp - currentStrokeStartedAt)
+          x: point.x >= BOARD_BOUNDS.x + BOARD_BOUNDS.width ? point.x - nudge : point.x + nudge,
+          y: point.y >= BOARD_BOUNDS.y + BOARD_BOUNDS.height ? point.y - nudge : point.y + nudge,
+          elapsedMs: Math.max(16, event.timeStamp - startedAt)
         }
       ];
     }
 
-    onStrokeComplete(currentStroke);
-    currentStroke = null;
-    drawing = false;
+    onStrokeComplete(stroke);
   }
 
   function cancelGuideGesture(): void {
-    const pointer = guideGesture?.pointer;
-    guideGesture = null;
-    if (pointer !== undefined && svg?.hasPointerCapture(pointer))
-      svg.releasePointerCapture(pointer);
+    if (gesture?.kind === 'guide') endGesture();
+  }
+
+  function cancelBackgroundGesture(): void {
+    if (gesture?.kind === 'background') endGesture();
+  }
+
+  function setBackgroundRect(rect: Rect): void {
+    if (backgroundImage) backgroundImage = { ...backgroundImage, rect };
+  }
+
+  /** Older boards have no picture rect; derive it from where the picture is drawn. */
+  function placeBackground(): void {
+    const image = backgroundElement;
+    if (!backgroundImage || backgroundImage.rect || !image?.naturalWidth) return;
+    setBackgroundRect(containRect(image.naturalWidth, image.naturalHeight, PAGE_RECT));
+  }
+
+  function startBackgroundGesture(event: PointerEvent): void {
+    const action = (event.target as SVGElement).dataset.backgroundAction;
+    if (event.button !== 0 || replaying || !backgroundRect || !action) return;
+    event.preventDefault();
+    const point = pointFromPointer(event, svg, BOARD_BOUNDS);
+    beginGesture(event, {
+      kind: 'background',
+      pointer: event.pointerId,
+      x: point.x,
+      y: point.y,
+      rect: { ...backgroundRect },
+      scale: action === 'scale'
+    });
+  }
+
+  function moveBackgroundGesture(
+    event: PointerEvent,
+    drag: Extract<Gesture, { kind: 'background' }>
+  ): void {
+    const point = pointFromPointer(event, svg, BOARD_BOUNDS);
+    const dx = point.x - drag.x;
+    const dy = point.y - drag.y;
+    const { rect } = drag;
+    if (drag.scale) {
+      // Project the drag onto the diagonal so the corner tracks the pointer.
+      const factor =
+        1 + (dx * rect.width + dy * rect.height) / (rect.width ** 2 + rect.height ** 2);
+      setBackgroundRect(scaleRect(rect, factor, BOARD_BOUNDS));
+    } else setBackgroundRect(moveRect(rect, dx, dy, BOARD_BOUNDS));
+  }
+
+  function backgroundKeyboard(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      editingBackground = false;
+      return;
+    }
+    if (!backgroundRect) return;
+    const step = event.shiftKey ? 10 : 1;
+    const direction = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step]
+    }[event.key];
+    if (direction) {
+      event.preventDefault();
+      setBackgroundRect(moveRect(backgroundRect, direction[0], direction[1], BOARD_BOUNDS));
+    } else if (event.key === '+' || event.key === '-') {
+      event.preventDefault();
+      const change = event.shiftKey ? 0.1 : 0.02;
+      setBackgroundRect(
+        scaleRect(backgroundRect, event.key === '+' ? 1 + change : 1 - change, BOARD_BOUNDS)
+      );
+    }
   }
 
   function updateGuide(size: number, spacing: number): void {
@@ -251,8 +550,8 @@
     const count = nextMetrics.lines.length - 1;
     const fit = Math.min(
       1,
-      (BOARD_WIDTH - 16) / nextMetrics.width,
-      (BOARD_HEIGHT - 16) / (nextMetrics.ascent + nextMetrics.descent + count * nextSpacing)
+      (BOARD_BOUNDS.width - 16) / nextMetrics.width,
+      (BOARD_BOUNDS.height - 16) / (nextMetrics.ascent + nextMetrics.descent + count * nextSpacing)
     );
     guideSize = Math.max(12, requestedSize * fit);
     nextSpacing = Math.max(16, nextSpacing * fit);
@@ -273,28 +572,29 @@
 
   function startGuideGesture(event: PointerEvent): void {
     const action = (event.target as SVGElement).dataset.guideAction;
-    if (event.button !== 0 || replaying || guideGesture || !guideLayout || !bounds || !action)
-      return;
+    if (event.button !== 0 || replaying || !guideLayout || !bounds || !action) return;
     event.preventDefault();
-    const point = pointFromPointer(event, svg);
-    guideGesture = {
+    const point = pointFromPointer(event, svg, BOARD_BOUNDS);
+    beginGesture(event, {
+      kind: 'guide',
       pointer: event.pointerId,
-      x: point.x * BOARD_WIDTH,
-      y: point.y * BOARD_HEIGHT,
+      x: point.x,
+      y: point.y,
       layout: { ...guideLayout },
       size: guideSize,
       scale: action === 'scale',
       bounds: { ...bounds }
-    };
-    svg.setPointerCapture(event.pointerId);
+    });
   }
 
-  function moveGuideGesture(event: PointerEvent): void {
-    const gesture = guideGesture;
-    if (!gesture || event.pointerId !== gesture.pointer || !metrics) return;
-    const point = pointFromPointer(event, svg);
-    const dx = point.x * BOARD_WIDTH - gesture.x;
-    const dy = point.y * BOARD_HEIGHT - gesture.y;
+  function moveGuideGesture(
+    event: PointerEvent,
+    gesture: Extract<Gesture, { kind: 'guide' }>
+  ): void {
+    if (!metrics) return;
+    const point = pointFromPointer(event, svg, BOARD_BOUNDS);
+    const dx = point.x - gesture.x;
+    const dy = point.y - gesture.y;
     if (gesture.scale) {
       const { width, height } = gesture.bounds;
       const scale = Math.max(
@@ -316,8 +616,27 @@
     }
   }
 
-  function guideKeyboard(event: KeyboardEvent): void {
-    if (!editingGuide || !guideLayout || !metrics) return;
+  const PAN_KEYS: Record<string, [number, number]> = {
+    ArrowLeft: [1, 0],
+    ArrowRight: [-1, 0],
+    ArrowUp: [0, 1],
+    ArrowDown: [0, -1]
+  };
+
+  function canvasKeyboard(event: KeyboardEvent): void {
+    if (editingBackground) {
+      backgroundKeyboard(event);
+      return;
+    }
+    if (!editingGuide) {
+      const direction = PAN_KEYS[event.key];
+      if (!direction) return;
+      event.preventDefault();
+      const step = event.shiftKey ? 240 : 60;
+      camera = panCamera(camera, direction[0] * step, direction[1] * step, baseScale);
+      return;
+    }
+    if (!guideLayout || !metrics) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       editingGuide = false;
@@ -343,18 +662,49 @@
     }
   }
 
-  function handleBackgroundDrop(event: CustomEvent<BackgroundDropDetail>): void {
+  function draggingFiles(event: DragEvent): boolean {
+    return event.dataTransfer?.types.includes('Files') ?? false;
+  }
+
+  function handleDragEnter(event: DragEvent): void {
+    if (!draggingFiles(event)) return;
+    event.preventDefault();
+    dragDepth += 1;
+    backgroundDragActive = true;
+  }
+
+  function handleDragOver(event: DragEvent): void {
+    if (!draggingFiles(event)) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+  }
+
+  function handleDragLeave(event: DragEvent): void {
+    if (!draggingFiles(event)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) backgroundDragActive = false;
+  }
+
+  function handleBackgroundDrop(event: DragEvent): void {
+    if (!draggingFiles(event)) return;
+    event.preventDefault();
+    dragDepth = 0;
     backgroundDragActive = false;
-    const file = event.detail.acceptedFiles[0];
+    const files = [...(event.dataTransfer?.files ?? [])];
+    const [file] = files;
+    const accepted =
+      files.length === 1 &&
+      BACKGROUND_IMAGE_ACCEPT.split(',').includes(file.type) &&
+      file.size <= MAX_BACKGROUND_FILE_SIZE;
 
-    if (file) {
-      onBackgroundSelected(file);
-      return;
-    }
-
-    if (event.detail.fileRejections.length) {
+    if (accepted) onBackgroundSelected(file);
+    else if (files.length)
       onBackgroundError('Choose one PNG, JPEG, or WebP image smaller than 15 MB.');
-    }
+  }
+
+  /** Stop the browser opening a file dropped beside the board. */
+  function preventFileNavigation(event: DragEvent): void {
+    if (draggingFiles(event)) event.preventDefault();
   }
 
   function handleCanvasPaste(event: ClipboardEvent): void {
@@ -368,43 +718,58 @@
   }
 </script>
 
+<svelte:window
+  on:keydown={handleKeyDown}
+  on:keyup={handleKeyUp}
+  on:blur={() => (spaceHeld = false)}
+  on:dragover={preventFileNavigation}
+  on:drop={preventFileNavigation}
+/>
+
 <div class="canvas-workspace">
   {#if fontError}
     <p class="font-warning" role="status">
       The guide font could not load. <button on:click={() => requestFont(guideFont)}>Retry</button>
     </p>
   {/if}
-  <Dropzone
-    accept={BACKGROUND_IMAGE_ACCEPT}
-    maxSize={MAX_BACKGROUND_FILE_SIZE}
-    multiple={false}
-    noClick={true}
-    noKeyboard={true}
-    disableDefaultStyles={true}
-    containerClasses="canvas-dropzone"
-    on:drop={handleBackgroundDrop}
-    on:dragenter={() => (backgroundDragActive = true)}
-    on:dragleave={() => (backgroundDragActive = false)}
+  <div
+    class="canvas-dropzone"
     role="presentation"
-    tabindex="-1"
+    on:dragenter={handleDragEnter}
+    on:dragover={handleDragOver}
+    on:dragleave={handleDragLeave}
+    on:drop={handleBackgroundDrop}
   >
     <div class="board-stage ph-no-capture" bind:this={boardStage}>
+      <!-- svelte-ignore a11y_no_static_element_interactions (pointer gestures; the canvas inside is the focusable, labelled control) -->
       <div
         class="board-viewport"
         class:trace-active={traceMode}
         class:background-drag-active={backgroundDragActive}
-        style={`width:${paperSize.width * Math.min(zoom, 1)}px;height:${paperSize.height * Math.min(zoom, 1)}px`}
+        class:pan-ready={spaceHeld}
+        class:panning={gesture?.kind === 'pan' || gesture?.kind === 'pinch'}
+        bind:this={viewportElement}
+        on:pointerdown={handlePointerDown}
+        on:pointermove={handlePointerMove}
+        on:pointerup={handlePointerUp}
+        on:pointercancel={handlePointerCancel}
+        on:lostpointercapture={handlePointerCancel}
+        on:contextmenu|preventDefault
       >
         <div
           class={`paper lines-${lineStyle}`}
-          style={`--paper:${pageColour};--zoom:${(paperSize.width / BOARD_WIDTH) * zoom};width:${BOARD_WIDTH}px;height:${BOARD_HEIGHT}px`}
+          style={`--paper:${pageColour};--origin-x:${PAGE_RECT.x - BOARD_BOUNDS.x}px;--origin-y:${PAGE_RECT.y - BOARD_BOUNDS.y}px;transform:${cssTransform(transform, BOARD_BOUNDS)};width:${BOARD_BOUNDS.width}px;height:${BOARD_BOUNDS.height}px`}
         >
           {#if backgroundImage}
             <img
               class="background-image"
+              bind:this={backgroundElement}
               src={backgroundImage.src}
               alt=""
-              style={`opacity:${backgroundOpacity}`}
+              style={`${backgroundStyle};opacity:${backgroundOpacity}`}
+              on:load={() => {
+                if (editingBackground) placeBackground();
+              }}
             />
           {/if}
           <div class="sheen"></div>
@@ -412,19 +777,16 @@
           <svg
             class="drawing-layer"
             bind:this={svg}
-            viewBox={`0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`}
+            viewBox={`${BOARD_BOUNDS.x} ${BOARD_BOUNDS.y} ${BOARD_BOUNDS.width} ${BOARD_BOUNDS.height}`}
             tabindex="0"
             aria-label={editingGuide
               ? 'Guide editor. Arrow keys move, plus and minus resize, Escape finishes editing.'
-              : 'Handwriting canvas. Paste an image to use it as a background.'}
+              : editingBackground
+                ? 'Picture editor. Arrow keys move, plus and minus resize, Escape finishes editing.'
+                : 'Handwriting canvas. Arrow keys pan. Paste an image to use it as a background.'}
             role="application"
-            on:pointerdown={startStroke}
-            on:pointermove={moveStroke}
-            on:pointerup={endStroke}
-            on:pointercancel={handlePointerCancel}
-            on:lostpointercapture={handlePointerCancel}
             on:paste={handleCanvasPaste}
-            on:keydown={guideKeyboard}
+            on:keydown={canvasKeyboard}
           >
             <g
               aria-hidden="true"
@@ -470,9 +832,39 @@
                 />
               </g>
             {/if}
+            {#if editingBackground && backgroundRect}
+              <g aria-hidden="true" class="guide-selection">
+                <rect
+                  data-background-action="move"
+                  x={backgroundRect.x}
+                  y={backgroundRect.y}
+                  width={backgroundRect.width}
+                  height={backgroundRect.height}
+                  fill="transparent"
+                  stroke="var(--blue)"
+                  stroke-width="2"
+                  vector-effect="non-scaling-stroke"
+                  stroke-dasharray="5 3"
+                  style="cursor:move"
+                />
+                <rect
+                  data-background-action="scale"
+                  x={backgroundRect.x + backgroundRect.width - handleSize}
+                  y={backgroundRect.y + backgroundRect.height - handleSize}
+                  width={handleSize}
+                  height={handleSize}
+                  rx="5"
+                  fill="var(--blue)"
+                  stroke="#fff"
+                  stroke-width="2"
+                  vector-effect="non-scaling-stroke"
+                  style="cursor:nwse-resize"
+                />
+              </g>
+            {/if}
             {#if currentStroke}
               <path
-                d={smoothPath(currentStroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
+                d={smoothPath(currentStroke.points)}
                 fill="none"
                 stroke={currentStroke.colour}
                 stroke-width={currentStroke.width}
@@ -483,24 +875,27 @@
             {/if}
           </svg>
           {#if !strokes.length && !guideText && !backgroundImage}
-            <div class="empty-prompt" aria-hidden="true">
+            <div class="empty-prompt" aria-hidden="true" style={pageInPaper}>
               <p>Start writing anywhere</p>
               <small>Or drop a picture here to trace it</small>
             </div>
           {/if}
-          {#if backgroundDragActive}
-            <div class="drop-prompt" aria-hidden="true">
-              <strong>Drop the picture to trace it</strong>
-              <span>PNG, JPEG, or WebP</span>
-            </div>
-          {/if}
         </div>
+        {#if backgroundDragActive}
+          <div class="drop-prompt" aria-hidden="true">
+            <strong>Drop the picture to trace it</strong>
+            <span>PNG, JPEG, or WebP</span>
+          </div>
+        {/if}
       </div>
       {#if timer}
-        <TimerWidget startedAt={timer.startedAt} durationMinutes={timer.durationMinutes} />
+        <!-- Loaded on demand to keep it out of the startup bundle. -->
+        {#await import('./TimerWidget.svelte') then { default: TimerWidget }}
+          <TimerWidget startedAt={timer.startedAt} durationMinutes={timer.durationMinutes} />
+        {/await}
       {/if}
     </div>
-  </Dropzone>
+  </div>
 </div>
 
 <style>
@@ -553,11 +948,32 @@
   }
   .board-viewport {
     position: relative;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
     border-radius: 5px;
     background: #e9ecef;
+    touch-action: none;
   }
-  :global(.canvas-dropzone) {
+  .board-viewport.pan-ready,
+  .board-viewport.pan-ready .paper {
+    cursor: grab;
+  }
+  .board-viewport.panning,
+  .board-viewport.panning .paper {
+    cursor: grabbing;
+  }
+  /* Drawn above the paper; an inset outline on the viewport would be covered by it. */
+  .board-viewport:has(.drawing-layer:focus-visible)::after {
+    content: '';
+    position: absolute;
+    z-index: 7;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 3px var(--blue);
+    pointer-events: none;
+  }
+  .canvas-dropzone {
     min-height: 0;
     display: grid;
   }
@@ -566,12 +982,10 @@
   }
   .paper {
     --paper: #fcfdfd;
-    --zoom: 1;
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(var(--zoom));
-    transform-origin: center;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
     overflow: hidden;
     background-color: var(--paper);
     touch-action: none;
@@ -579,15 +993,11 @@
     outline: none;
   }
   .drawing-layer:focus-visible {
-    outline: 3px solid var(--blue);
-    outline-offset: -3px;
+    outline: none;
   }
   .background-image {
     position: absolute;
     z-index: 1;
-    inset: 0;
-    width: 100%;
-    height: 100%;
     object-fit: contain;
     pointer-events: none;
     user-select: none;
@@ -608,24 +1018,28 @@
       inset 0 0 0 1px rgba(0, 0, 0, 0.07),
       inset 0 2px 4px rgba(0, 0, 0, 0.06);
   }
+  /* Line patterns are tiled from the page origin (--origin-*) so they line up with the page. */
   .paper.lines-ruled {
-    background-image: repeating-linear-gradient(
+    background-image: linear-gradient(
       to bottom,
       transparent 0 72px,
       #b8d4e7 73px 75px,
       transparent 76px 92px
     );
+    background-size: 100% 92px;
+    background-position: 0 var(--origin-y);
   }
   .paper.lines-dotted {
     background-image: radial-gradient(circle, #a8c9df 1.5px, transparent 1.8px);
     background-size: 16px 92px;
-    background-position: 0 73px;
+    background-position: var(--origin-x) calc(var(--origin-y) + 73px);
   }
   .paper.lines-grid {
     background-image:
       linear-gradient(#cfdfeb 1px, transparent 1px),
       linear-gradient(90deg, #cfdfeb 1px, transparent 1px);
     background-size: 48px 48px;
+    background-position: var(--origin-x) var(--origin-y);
   }
   .drawing-layer {
     position: absolute;
@@ -638,7 +1052,6 @@
   .empty-prompt {
     position: absolute;
     z-index: 3;
-    inset: 0;
     display: grid;
     place-content: center;
     justify-items: center;
@@ -685,7 +1098,7 @@
   }
 
   @media (max-width: 959px) {
-    :global(.canvas-dropzone) {
+    .canvas-dropzone {
       aspect-ratio: 12 / 7;
     }
   }

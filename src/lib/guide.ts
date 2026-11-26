@@ -1,6 +1,6 @@
-import { BOARD_HEIGHT, BOARD_WIDTH } from './constants';
+import { BOARD_BOUNDS, PAGE_RECT } from './constants';
 import { createGuideRows } from './drawing';
-import type { GuideLayout } from './types';
+import type { GuideLayout, Rect } from './types';
 import {
   DEFAULT_GUIDE_FONT,
   guideFontFamily,
@@ -44,23 +44,23 @@ export function guideBounds(metrics: ReturnType<typeof guideMetrics>, layout: Gu
   };
 }
 
+/** Keep the whole guide block inside `bounds`. */
 export function constrainGuide(
   layout: GuideLayout,
-  metrics: ReturnType<typeof guideMetrics>
+  metrics: ReturnType<typeof guideMetrics>,
+  bounds: Rect = BOARD_BOUNDS
 ): GuideLayout {
   const height = metrics.ascent + metrics.descent + (metrics.lines.length - 1) * layout.rowSpacing;
+  const top = bounds.y + metrics.ascent;
   return {
     ...layout,
-    x: clamp(layout.x, 0, Math.max(0, BOARD_WIDTH - metrics.width)),
-    y: clamp(
-      layout.y,
-      metrics.ascent,
-      Math.max(metrics.ascent, BOARD_HEIGHT - height + metrics.ascent)
-    )
+    x: clamp(layout.x, bounds.x, Math.max(bounds.x, bounds.x + bounds.width - metrics.width)),
+    y: clamp(layout.y, top, Math.max(top, bounds.y + bounds.height - height + metrics.ascent))
   };
 }
 
-// Old boards retain their original layout until the user explicitly edits the guide.
+// Old boards retain their original layout (relative to the original page) until the user
+// explicitly edits the guide.
 export function guideBaselines(
   text: string,
   repeats: number,
@@ -75,7 +75,10 @@ export function guideBaselines(
     }));
   return createGuideRows(text, repeats).map((row) => ({
     text: row.text,
-    x: BOARD_WIDTH * 0.07,
-    y: (row.topPercent / 100) * BOARD_HEIGHT + (metrics.ascent - metrics.descent) / 2
+    x: PAGE_RECT.x + PAGE_RECT.width * 0.07,
+    y:
+      PAGE_RECT.y +
+      (row.topPercent / 100) * PAGE_RECT.height +
+      (metrics.ascent - metrics.descent) / 2
   }));
 }

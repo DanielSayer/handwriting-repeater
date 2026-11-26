@@ -3,6 +3,7 @@ import type { GuideFontId } from './guideFonts';
 export type PenType = 'marker' | 'pencil';
 export type LineStyle = 'ruled' | 'dotted' | 'grid' | 'blank';
 
+/** Board-space position in pixels (origin at the page's top-left corner). */
 export interface Point {
   x: number;
   y: number;
@@ -20,6 +21,8 @@ export interface BoardStroke {
 export interface BoardBackground {
   src: string;
   name: string;
+  /** Where the picture sits on the board. Older boards omit it: contained in the page. */
+  rect?: Rect;
 }
 
 export interface PaperOption {
@@ -39,7 +42,23 @@ export interface GuideLayout {
   rowSpacing: number;
 }
 
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** What the board viewport shows: the board point at its centre, and a zoom factor. */
+export interface Camera {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
 export interface PersistedBoardState {
+  /** Storage schema version. Version 1 (absent) stored points as 0–1 page fractions. */
+  version: number;
   strokes: BoardStroke[];
   backgroundImage: BoardBackground | null;
   backgroundOpacity: number;
@@ -48,7 +67,7 @@ export interface PersistedBoardState {
   penType: PenType;
   pageColour: string;
   lineStyle: LineStyle;
-  zoom: number;
+  camera: Camera;
   speed: number;
   loopMode: boolean;
   traceMode: boolean;
@@ -63,8 +82,8 @@ export interface ExportBoardOptions {
   strokes: BoardStroke[];
   backgroundImage: BoardBackground | null;
   backgroundOpacity: number;
-  boardWidth: number;
-  boardHeight: number;
+  /** Board area to render, in board pixels, or 'content' for everything on the board. */
+  region: Rect | 'content';
   pageColour: string;
   lineStyle: LineStyle;
   guideText: string;

@@ -6,8 +6,16 @@
   import TopBar from './components/TopBar.svelte';
   import Tray from './components/Tray.svelte';
   import { captureEvent, captureException } from './lib/analytics';
-  import { DEFAULT_BOARD_STATE, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './lib/constants';
-  import { prepareBackgroundImage } from './lib/backgroundImage';
+  import {
+    BOARD_STATE_VERSION,
+    DEFAULT_BOARD_STATE,
+    DEFAULT_CAMERA,
+    ZOOM_MAX,
+    ZOOM_MIN,
+    PAGE_RECT
+  } from './lib/constants';
+  import { nextZoomLevel } from './lib/camera';
+  import type { ExportArea } from './lib/exportRegion';
   import {
     createReplaySchedule,
     playbackRateForSpeed,
@@ -18,7 +26,8 @@
     BoardStroke,
     LineStyle,
     PenType,
-    PersistedBoardState
+    PersistedBoardState,
+    Rect
   } from './lib/types';
 
   let strokes: BoardStroke[] = [];
@@ -33,7 +42,7 @@
   let penType: PenType = DEFAULT_BOARD_STATE.penType;
   let pageColour = DEFAULT_BOARD_STATE.pageColour;
   let lineStyle: LineStyle = DEFAULT_BOARD_STATE.lineStyle;
-  let zoom = DEFAULT_BOARD_STATE.zoom;
+  let camera = DEFAULT_BOARD_STATE.camera;
   let speed = DEFAULT_BOARD_STATE.speed;
   let loopMode = DEFAULT_BOARD_STATE.loopMode;
   let traceMode = DEFAULT_BOARD_STATE.traceMode;
@@ -43,8 +52,8 @@
   let guideLayout = DEFAULT_BOARD_STATE.guideLayout;
   let guideFont = DEFAULT_BOARD_STATE.guideFont;
   let editingGuide = false;
-  let boardWidth = 960;
-  let boardHeight = 560;
+  let editingBackground = false;
+  let visibleRect: Rect = { ...PAGE_RECT };
   let replaying = false;
   let replayNonce = 0;
   let replayTimer: ReturnType<typeof setTimeout> | undefined;
@@ -56,6 +65,7 @@
   $: playbackRate = playbackRateForSpeed(speed);
   $: replayDuration = getReplayDuration(createReplaySchedule(strokes, playbackRate));
   $: persistedState = {
+    version: BOARD_STATE_VERSION,
     strokes,
     backgroundImage,
     backgroundOpacity,
@@ -64,7 +74,7 @@
     penType,
     pageColour,
     lineStyle,
-    zoom,
+    camera,
     speed,
     loopMode,
     traceMode,
@@ -90,7 +100,7 @@
     penType = saved.penType ?? penType;
     pageColour = saved.pageColour ?? pageColour;
     lineStyle = saved.lineStyle ?? lineStyle;
-    zoom = saved.zoom ?? zoom;
+    camera = saved.camera ?? camera;
     speed = saved.speed ?? speed;
     loopMode = saved.loopMode ?? loopMode;
     traceMode = saved.traceMode ?? traceMode;
@@ -153,6 +163,7 @@
     stopReplay();
     const nonce = replayNonce;
     editingGuide = false;
+    editingBackground = false;
     await tick();
     if (nonce !== replayNonce || !strokes.length) return;
     replaying = true;
@@ -187,6 +198,7 @@
         rowSpacing: lineStyle === 'grid' ? 48 : 92
       };
     editingGuide = Boolean(text);
+    if (text) editingBackground = false;
     if (!text) guideLayout = null;
     stopReplay();
     guideDialogOpen = false;
@@ -212,6 +224,7 @@
     backgroundError = '';
 
     try {
+      const { prepareBackgroundImage } = await import('./lib/prepareBackgroundImage');
       const image = await prepareBackgroundImage(file);
       if (request !== backgroundRequest) return;
       backgroundImage = image;
@@ -227,13 +240,14 @@
   }
 
   function removeBackground(): void {
+    editingBackground = false;
     backgroundRequest += 1;
     backgroundLoading = false;
     backgroundImage = null;
     backgroundError = '';
   }
 
-  async function exportBoard(): Promise<void> {
+  async function exportBoard(area: ExportArea): Promise<void> {
     if (exporting) return;
     exporting = true;
     exportError = '';
@@ -242,8 +256,7 @@
       strokes,
       backgroundImage,
       backgroundOpacity,
-      boardWidth,
-      boardHeight,
+      region: area === 'view' ? { ...visibleRect } : ('content' as const),
       pageColour,
       lineStyle,
       guideText,
@@ -265,7 +278,8 @@
         has_guide: Boolean(guideText),
         guide_font: guideText ? guideFont : null,
         trace_enabled: traceMode,
-        playback_rate: playbackRate
+        playback_rate: playbackRate,
+        export_area: area
       });
     } catch (error) {
       exportError = 'The GIF could not be created. Try again with a shorter replay.';
@@ -289,7 +303,7 @@
   }
 
   function changeZoom(direction: 1 | -1): void {
-    zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom + direction * ZOOM_STEP));
+    camera = { ...camera, zoom: nextZoomLevel(camera.zoom, direction) };
   }
 </script>
 
@@ -311,6 +325,11 @@
     onOpenGuide={() => (guideDialogOpen = true)}
     onBackgroundSelected={(file) => void setBackground(file)}
     onRemoveBackground={removeBackground}
+    onAdjustBackground={() => {
+      stopReplay();
+      editingGuide = false;
+      editingBackground = true;
+    }}
     onStartTimer={startTimer}
     onCancelTimer={cancelTimer}
     onExport={exportBoard}
@@ -327,7 +346,7 @@
             {penType}
             {pageColour}
             {lineStyle}
-            {zoom}
+            bind:camera
             {traceMode}
             {replaying}
             {replayNonce}
@@ -338,22 +357,28 @@
             bind:guideLayout
             {guideFont}
             bind:editingGuide
-            {backgroundImage}
+            bind:editingBackground
+            bind:visibleRect
+            bind:backgroundImage
             {backgroundOpacity}
             {timer}
             onStrokeComplete={addStroke}
-            onResize={(width, height) => {
-              boardWidth = width;
-              boardHeight = height;
-            }}
             onBackgroundSelected={(file) => void setBackground(file)}
             onBackgroundError={reportBackgroundSelectionError}
           />
-          {#if editingGuide}
+          {#if editingGuide || editingBackground}
             <div class="guide-edit" role="status">
               <Icon name="move" size={18} />
-              <span>Drag to move. Drag the corner to resize.</span>
-              <button class="btn sel" on:click={() => (editingGuide = false)}>Done</button>
+              <span
+                >Drag the {editingBackground ? 'picture' : 'guide'} to move it. Drag the corner to resize.</span
+              >
+              <button
+                class="btn sel"
+                on:click={() => {
+                  editingGuide = false;
+                  editingBackground = false;
+                }}>Done</button
+              >
             </div>
           {/if}
           <div class="zoom" role="group" aria-label="Zoom">
@@ -361,15 +386,21 @@
               class="btn icon"
               aria-label="Zoom out"
               title="Zoom out"
-              disabled={zoom <= ZOOM_MIN}
+              disabled={camera.zoom <= ZOOM_MIN}
               on:click={() => changeZoom(-1)}><Icon name="minus" size={18} /></button
             >
-            <span aria-live="polite">{Math.round(zoom * 100)}%</span>
+            <button
+              class="zoom-level"
+              title="Reset view"
+              aria-label={`Zoom ${Math.round(camera.zoom * 100)}%. Reset view`}
+              on:click={() => (camera = { ...DEFAULT_CAMERA })}
+              ><span aria-live="polite">{Math.round(camera.zoom * 100)}%</span></button
+            >
             <button
               class="btn icon"
               aria-label="Zoom in"
               title="Zoom in"
-              disabled={zoom >= ZOOM_MAX}
+              disabled={camera.zoom >= ZOOM_MAX}
               on:click={() => changeZoom(1)}><Icon name="plus" size={18} /></button
             >
           </div>
@@ -424,6 +455,7 @@
       onAdjust={() => {
         guideDialogOpen = false;
         stopReplay();
+        editingBackground = false;
         editingGuide = true;
       }}
     />
@@ -489,9 +521,19 @@
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
-  .zoom span {
-    min-width: 42px;
-    text-align: center;
+  .zoom-level {
+    min-width: 50px;
+    min-height: 36px;
+    padding: 0 4px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .zoom-level:hover {
+    background: rgba(0, 0, 0, 0.05);
   }
   .guide-edit {
     position: absolute;

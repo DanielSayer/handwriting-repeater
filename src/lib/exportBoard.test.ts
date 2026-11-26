@@ -10,8 +10,8 @@ const stroke: BoardStroke = {
   opacity: 1,
   points: [
     { x: 0, y: 0 },
-    { x: 0.5, y: 0 },
-    { x: 0.5, y: 1 }
+    { x: 480, y: 0 },
+    { x: 480, y: 960 }
   ]
 };
 
@@ -46,8 +46,8 @@ describe('partialStrokePoints', () => {
   it('interpolates through the active segment by travelled distance', () => {
     expect(partialStrokePoints(stroke, 0.5)).toEqual([
       { x: 0, y: 0 },
-      { x: 0.5, y: 0 },
-      { x: 0.5, y: 0.25 }
+      { x: 480, y: 0 },
+      { x: 480, y: 240 }
     ]);
   });
 
@@ -78,8 +78,7 @@ describe('GIF encoding', () => {
       strokes: [],
       backgroundImage: null,
       backgroundOpacity: 1,
-      boardWidth: 960,
-      boardHeight: 1,
+      region: { x: 0, y: 0, width: 960, height: 1 },
       pageColour: '#ffffff',
       lineStyle: 'blank',
       guideText: '',
@@ -99,6 +98,87 @@ describe('GIF encoding', () => {
       );
       expect(Array.from(bytes.slice(extension + 11, extension + 16))).toEqual([3, 1, 0, 0, 0]);
     }
+  });
+
+  it('offsets strokes and sizes the GIF from the export region', async () => {
+    const calls: { method: string; args: number[] }[] = [];
+    const record =
+      (method: string) =>
+      (...args: number[]) =>
+        calls.push({ method, args });
+    let size: number[] = [];
+    vi.stubGlobal(
+      'OffscreenCanvas',
+      class {
+        constructor(...args: number[]) {
+          size = args;
+        }
+        getContext() {
+          const context: Record<string, unknown> = {
+            moveTo: record('moveTo'),
+            lineTo: record('lineTo'),
+            getImageData: () => ({ data: new Uint8ClampedArray(960 * 4).fill(255) })
+          };
+          // Any other drawing call is a no-op; property writes are accepted.
+          return new Proxy(context, { get: (target, key: string) => target[key] ?? (() => {}) });
+        }
+      }
+    );
+
+    await encodeBoardGif({
+      strokes: [
+        {
+          ...stroke,
+          points: [
+            { x: 100, y: 200, elapsedMs: 0 },
+            { x: 150, y: 200, elapsedMs: 10 }
+          ]
+        }
+      ],
+      backgroundImage: null,
+      backgroundOpacity: 1,
+      region: { x: 100, y: 200, width: 480, height: 240 },
+      pageColour: '#ffffff',
+      lineStyle: 'blank',
+      guideText: '',
+      repeatCount: 1,
+      guideSize: 48,
+      playbackRate: 1,
+      traceMode: false,
+      loopMode: false
+    });
+
+    expect(size).toEqual([960, 480]);
+    expect(calls).toContainEqual({ method: 'moveTo', args: [0, 0] });
+    expect(calls).toContainEqual({ method: 'lineTo', args: [100, 0] });
+
+    calls.length = 0;
+    await encodeBoardGif({
+      strokes: [
+        {
+          ...stroke,
+          points: [
+            { x: 1000, y: 1000, elapsedMs: 0 },
+            { x: 1100, y: 1000, elapsedMs: 10 }
+          ]
+        }
+      ],
+      backgroundImage: null,
+      backgroundOpacity: 1,
+      region: 'content',
+      pageColour: '#ffffff',
+      lineStyle: 'blank',
+      guideText: '',
+      repeatCount: 1,
+      guideSize: 48,
+      playbackRate: 1,
+      traceMode: false,
+      loopMode: false
+    });
+
+    // A short stroke is centred in a 480x280 region, exported at double size.
+    expect(size).toEqual([960, 560]);
+    expect(calls).toContainEqual({ method: 'moveTo', args: [380, 280] });
   });
 
   it('writes an animated GIF with no repeat extension', () => {

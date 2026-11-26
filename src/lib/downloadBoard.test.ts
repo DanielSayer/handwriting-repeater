@@ -1,13 +1,12 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { DEFAULT_BOARD_STATE, BOARD_WIDTH, BOARD_HEIGHT } from './constants';
+import { DEFAULT_BOARD_STATE, PAGE_RECT } from './constants';
 import { createBoardGif } from './downloadBoard';
 
 const fallback = vi.hoisted(() => vi.fn());
 vi.mock('./exportBoard', () => ({ encodeBoardGif: fallback }));
 const options = {
   ...DEFAULT_BOARD_STATE,
-  boardWidth: BOARD_WIDTH,
-  boardHeight: BOARD_HEIGHT,
+  region: PAGE_RECT,
   playbackRate: 1
 };
 afterEach(() => {
