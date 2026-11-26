@@ -20,7 +20,8 @@
     GuideLayout,
     LineStyle,
     PenType,
-    Point
+    Point,
+    Rect
   } from '../lib/types';
 
   interface BackgroundDropDetail {
@@ -57,9 +58,6 @@
   let viewportWidth = BOARD_WIDTH;
   let viewportHeight = BOARD_HEIGHT;
   let currentStroke: BoardStroke | null = null;
-  let currentStrokeStartedAt = 0;
-  let drawing = false;
-  let activePointer: number | null = null;
   let pendingPoints: Point[] = [];
   let strokeFrame: number | undefined;
   let backgroundDragActive = false;
@@ -68,15 +66,20 @@
   let loadedFont: GuideFontId | null = null;
   let fontError = false;
   let requestedFont: GuideFontId | null = null;
-  let guideGesture: {
-    pointer: number;
-    x: number;
-    y: number;
-    layout: GuideLayout;
-    size: number;
-    scale: boolean;
-    bounds: { x: number; y: number; width: number; height: number };
-  } | null = null;
+  /** The single pointer gesture in progress. Other pointers are ignored until it ends. */
+  type Gesture =
+    | { kind: 'stroke'; pointer: number; startedAt: number }
+    | {
+        kind: 'guide';
+        pointer: number;
+        x: number;
+        y: number;
+        layout: GuideLayout;
+        size: number;
+        scale: boolean;
+        bounds: Rect;
+      };
+  let gesture: Gesture | null = null;
 
   $: if (guideText && measureContext) requestFont(guideFont);
   $: fontReady = loadedFont === guideFont;
@@ -134,17 +137,50 @@
     }
   }
 
-  function startStroke(event: PointerEvent): void {
+  function handlePointerDown(event: PointerEvent): void {
     svg.focus({ preventScroll: true });
-    if (editingGuide) {
-      startGuideGesture(event);
-      return;
-    }
-    if (event.button !== 0 || replaying || activePointer !== null) return;
-    activePointer = event.pointerId;
+    if (gesture) return;
+    if (editingGuide) startGuideGesture(event);
+    else startStroke(event);
+  }
+
+  function handlePointerMove(event: PointerEvent): void {
+    if (event.pointerId !== gesture?.pointer) return;
+    if (gesture.kind === 'guide') moveGuideGesture(event, gesture);
+    else moveStroke(event, gesture.startedAt);
+  }
+
+  function handlePointerUp(event: PointerEvent): void {
+    if (event.pointerId !== gesture?.pointer) return;
+    if (gesture.kind === 'guide') endGesture();
+    else endStroke(event, gesture.startedAt);
+  }
+
+  function handlePointerCancel(event: PointerEvent): void {
+    if (event.pointerId !== gesture?.pointer) return;
+    if (gesture.kind === 'guide') {
+      guideLayout = gesture.layout;
+      guideSize = gesture.size;
+      endGesture();
+    } else cancelStroke();
+  }
+
+  function beginGesture(event: PointerEvent, next: Gesture): void {
+    gesture = next;
     svg.setPointerCapture(event.pointerId);
-    drawing = true;
-    currentStrokeStartedAt = event.timeStamp;
+  }
+
+  /** Clear the gesture before releasing capture so `lostpointercapture` sees no gesture. */
+  function endGesture(): void {
+    const pointer = gesture?.pointer;
+    gesture = null;
+    if (pointer !== undefined && svg?.hasPointerCapture(pointer))
+      svg.releasePointerCapture(pointer);
+  }
+
+  function startStroke(event: PointerEvent): void {
+    if (event.button !== 0 || replaying) return;
+    beginGesture(event, { kind: 'stroke', pointer: event.pointerId, startedAt: event.timeStamp });
     currentStroke = {
       id: crypto.randomUUID(),
       colour: penColour,
@@ -154,18 +190,14 @@
     };
   }
 
-  function moveStroke(event: PointerEvent): void {
-    if (guideGesture) {
-      moveGuideGesture(event);
-      return;
-    }
-    if (!drawing || !currentStroke || event.pointerId !== activePointer) return;
+  function moveStroke(event: PointerEvent, startedAt: number): void {
+    if (!currentStroke) return;
     const coalescedEvents = event.getCoalescedEvents?.();
     const pointerEvents = coalescedEvents?.length ? coalescedEvents : [event];
     pendingPoints.push(
       ...pointerEvents.map((pointerEvent) => ({
         ...pointFromPointer(pointerEvent, svg, BOARD_BOUNDS),
-        elapsedMs: Math.max(0, pointerEvent.timeStamp - currentStrokeStartedAt)
+        elapsedMs: Math.max(0, pointerEvent.timeStamp - startedAt)
       }))
     );
     strokeFrame ??= requestAnimationFrame(flushStroke);
@@ -185,60 +217,36 @@
     strokeFrame = undefined;
     pendingPoints = [];
     currentStroke = null;
-    drawing = false;
-    const pointer = activePointer;
-    activePointer = null;
-    if (pointer !== null && svg?.hasPointerCapture(pointer)) svg.releasePointerCapture(pointer);
+    if (gesture?.kind === 'stroke') endGesture();
   }
 
-  function handlePointerCancel(event: PointerEvent): void {
-    if (event.pointerId === guideGesture?.pointer) {
-      guideLayout = guideGesture.layout;
-      guideSize = guideGesture.size;
-      cancelGuideGesture();
-    }
-    if (event.pointerId === activePointer) cancelStroke();
-  }
-
-  function endStroke(event: PointerEvent): void {
-    if (event.pointerId === guideGesture?.pointer) {
-      cancelGuideGesture();
-      return;
-    }
-    if (!drawing || !currentStroke || event.pointerId !== activePointer) return;
+  function endStroke(event: PointerEvent, startedAt: number): void {
     flushStroke();
-    activePointer = null;
-    if (svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+    endGesture();
+    const stroke = currentStroke;
+    currentStroke = null;
+    if (!stroke) return;
 
-    if (currentStroke.points.length === 1) {
-      if (event.pointerType === 'mouse') {
-        currentStroke = null;
-        drawing = false;
-        return;
-      }
+    if (stroke.points.length === 1) {
+      if (event.pointerType === 'mouse') return;
       // Nudge a tap into a tiny segment so it renders as a dot, staying inside the board.
-      const point = currentStroke.points[0];
+      const point = stroke.points[0];
       const nudge = 0.1;
-      currentStroke.points = [
+      stroke.points = [
         point,
         {
           x: point.x >= BOARD_BOUNDS.x + BOARD_BOUNDS.width ? point.x - nudge : point.x + nudge,
           y: point.y >= BOARD_BOUNDS.y + BOARD_BOUNDS.height ? point.y - nudge : point.y + nudge,
-          elapsedMs: Math.max(16, event.timeStamp - currentStrokeStartedAt)
+          elapsedMs: Math.max(16, event.timeStamp - startedAt)
         }
       ];
     }
 
-    onStrokeComplete(currentStroke);
-    currentStroke = null;
-    drawing = false;
+    onStrokeComplete(stroke);
   }
 
   function cancelGuideGesture(): void {
-    const pointer = guideGesture?.pointer;
-    guideGesture = null;
-    if (pointer !== undefined && svg?.hasPointerCapture(pointer))
-      svg.releasePointerCapture(pointer);
+    if (gesture?.kind === 'guide') endGesture();
   }
 
   function updateGuide(size: number, spacing: number): void {
@@ -277,11 +285,11 @@
 
   function startGuideGesture(event: PointerEvent): void {
     const action = (event.target as SVGElement).dataset.guideAction;
-    if (event.button !== 0 || replaying || guideGesture || !guideLayout || !bounds || !action)
-      return;
+    if (event.button !== 0 || replaying || !guideLayout || !bounds || !action) return;
     event.preventDefault();
     const point = pointFromPointer(event, svg, BOARD_BOUNDS);
-    guideGesture = {
+    beginGesture(event, {
+      kind: 'guide',
       pointer: event.pointerId,
       x: point.x,
       y: point.y,
@@ -289,13 +297,14 @@
       size: guideSize,
       scale: action === 'scale',
       bounds: { ...bounds }
-    };
-    svg.setPointerCapture(event.pointerId);
+    });
   }
 
-  function moveGuideGesture(event: PointerEvent): void {
-    const gesture = guideGesture;
-    if (!gesture || event.pointerId !== gesture.pointer || !metrics) return;
+  function moveGuideGesture(
+    event: PointerEvent,
+    gesture: Extract<Gesture, { kind: 'guide' }>
+  ): void {
+    if (!metrics) return;
     const point = pointFromPointer(event, svg, BOARD_BOUNDS);
     const dx = point.x - gesture.x;
     const dy = point.y - gesture.y;
@@ -422,9 +431,9 @@
               ? 'Guide editor. Arrow keys move, plus and minus resize, Escape finishes editing.'
               : 'Handwriting canvas. Paste an image to use it as a background.'}
             role="application"
-            on:pointerdown={startStroke}
-            on:pointermove={moveStroke}
-            on:pointerup={endStroke}
+            on:pointerdown={handlePointerDown}
+            on:pointermove={handlePointerMove}
+            on:pointerup={handlePointerUp}
             on:pointercancel={handlePointerCancel}
             on:lostpointercapture={handlePointerCancel}
             on:paste={handleCanvasPaste}
