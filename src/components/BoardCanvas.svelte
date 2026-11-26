@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import Dropzone from 'svelte-file-dropzone';
   import StrokeLayer from './StrokeLayer.svelte';
   import {
     BACKGROUND_IMAGE_ACCEPT,
@@ -38,11 +37,6 @@
     Point,
     Rect
   } from '../lib/types';
-
-  interface BackgroundDropDetail {
-    acceptedFiles: File[];
-    fileRejections: unknown[];
-  }
 
   export let strokes: BoardStroke[];
   export let penColour: string;
@@ -82,6 +76,8 @@
   let pendingPoints: Point[] = [];
   let strokeFrame: number | undefined;
   let backgroundDragActive = false;
+  // dragenter/dragleave also fire for child elements; count them to know when the drag leaves.
+  let dragDepth = 0;
   let resizeAnimationFrame: number | undefined;
   let measureContext: CanvasRenderingContext2D | null = null;
   let loadedFont: GuideFontId | null = null;
@@ -666,18 +662,49 @@
     }
   }
 
-  function handleBackgroundDrop(event: CustomEvent<BackgroundDropDetail>): void {
+  function draggingFiles(event: DragEvent): boolean {
+    return event.dataTransfer?.types.includes('Files') ?? false;
+  }
+
+  function handleDragEnter(event: DragEvent): void {
+    if (!draggingFiles(event)) return;
+    event.preventDefault();
+    dragDepth += 1;
+    backgroundDragActive = true;
+  }
+
+  function handleDragOver(event: DragEvent): void {
+    if (!draggingFiles(event)) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+  }
+
+  function handleDragLeave(event: DragEvent): void {
+    if (!draggingFiles(event)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) backgroundDragActive = false;
+  }
+
+  function handleBackgroundDrop(event: DragEvent): void {
+    if (!draggingFiles(event)) return;
+    event.preventDefault();
+    dragDepth = 0;
     backgroundDragActive = false;
-    const file = event.detail.acceptedFiles[0];
+    const files = [...(event.dataTransfer?.files ?? [])];
+    const [file] = files;
+    const accepted =
+      files.length === 1 &&
+      BACKGROUND_IMAGE_ACCEPT.split(',').includes(file.type) &&
+      file.size <= MAX_BACKGROUND_FILE_SIZE;
 
-    if (file) {
-      onBackgroundSelected(file);
-      return;
-    }
-
-    if (event.detail.fileRejections.length) {
+    if (accepted) onBackgroundSelected(file);
+    else if (files.length)
       onBackgroundError('Choose one PNG, JPEG, or WebP image smaller than 15 MB.');
-    }
+  }
+
+  /** Stop the browser opening a file dropped beside the board. */
+  function preventFileNavigation(event: DragEvent): void {
+    if (draggingFiles(event)) event.preventDefault();
   }
 
   function handleCanvasPaste(event: ClipboardEvent): void {
@@ -695,6 +722,8 @@
   on:keydown={handleKeyDown}
   on:keyup={handleKeyUp}
   on:blur={() => (spaceHeld = false)}
+  on:dragover={preventFileNavigation}
+  on:drop={preventFileNavigation}
 />
 
 <div class="canvas-workspace">
@@ -703,19 +732,13 @@
       The guide font could not load. <button on:click={() => requestFont(guideFont)}>Retry</button>
     </p>
   {/if}
-  <Dropzone
-    accept={BACKGROUND_IMAGE_ACCEPT}
-    maxSize={MAX_BACKGROUND_FILE_SIZE}
-    multiple={false}
-    noClick={true}
-    noKeyboard={true}
-    disableDefaultStyles={true}
-    containerClasses="canvas-dropzone"
-    on:drop={handleBackgroundDrop}
-    on:dragenter={() => (backgroundDragActive = true)}
-    on:dragleave={() => (backgroundDragActive = false)}
+  <div
+    class="canvas-dropzone"
     role="presentation"
-    tabindex="-1"
+    on:dragenter={handleDragEnter}
+    on:dragover={handleDragOver}
+    on:dragleave={handleDragLeave}
+    on:drop={handleBackgroundDrop}
   >
     <div class="board-stage ph-no-capture" bind:this={boardStage}>
       <!-- svelte-ignore a11y_no_static_element_interactions (pointer gestures; the canvas inside is the focusable, labelled control) -->
@@ -872,7 +895,7 @@
         {/await}
       {/if}
     </div>
-  </Dropzone>
+  </div>
 </div>
 
 <style>
@@ -950,7 +973,7 @@
     box-shadow: inset 0 0 0 3px var(--blue);
     pointer-events: none;
   }
-  :global(.canvas-dropzone) {
+  .canvas-dropzone {
     min-height: 0;
     display: grid;
   }
@@ -1075,7 +1098,7 @@
   }
 
   @media (max-width: 959px) {
-    :global(.canvas-dropzone) {
+    .canvas-dropzone {
       aspect-ratio: 12 / 7;
     }
   }
