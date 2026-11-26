@@ -53,6 +53,7 @@
   let guideFont = DEFAULT_BOARD_STATE.guideFont;
   let editingGuide = false;
   let editingBackground = false;
+  let handTool = false;
   let visibleRect: Rect = { ...PAGE_RECT };
   let replaying = false;
   let replayNonce = 0;
@@ -358,6 +359,7 @@
             {guideFont}
             bind:editingGuide
             bind:editingBackground
+            bind:handTool
             bind:visibleRect
             bind:backgroundImage
             {backgroundOpacity}
@@ -409,6 +411,7 @@
       <div class="lip" aria-hidden="true"></div>
       <Tray
         bind:penType
+        bind:handTool
         bind:penSize
         bind:penColour
         bind:traceMode

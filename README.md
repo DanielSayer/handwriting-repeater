@@ -13,7 +13,7 @@ Handwriting Repeater is a free online whiteboard for handwriting practice. Write
 ## What you can do
 
 - **Write naturally.** Use a marker or pencil and pick any colour and thickness.
-- **Room to spread out.** The board is much bigger than the screen. Drag with the right mouse button (or two fingers) to move around, and scroll with Ctrl held, or pinch, to zoom.
+- **Room to spread out.** The board is much bigger than the screen. Pick the hand tool (H) and drag, or drag with the right mouse button or two fingers, to move around, and scroll with Ctrl held, or pinch, to zoom.
 - **Practise with guides.** Turn on ruled lines, dots or a grid, or type a word and have it repeated across the page to copy. Drag guides around, resize them, and pick a handwriting font: Australian school fonts, joined US cursive, and more.
 - **Trace a picture.** Add a photo or worksheet behind the board and fade it so it's easy to trace.
 - **Watch it back.** Replay your writing at its real pace, speed it up or slow it down, or set it to loop. Turn on **Ghost** to keep a faint copy showing while it replays.

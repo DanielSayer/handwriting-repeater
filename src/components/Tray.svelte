@@ -6,6 +6,7 @@
   import type { PenType } from '../lib/types';
 
   export let penType: PenType;
+  export let handTool: boolean;
   export let penSize: number;
   export let penColour: string;
   export let traceMode: boolean;
@@ -28,6 +29,11 @@
     SPEED_OPTIONS.find((option) => option.value === speed)?.label ??
     `${playbackRateForSpeed(speed).toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}×`;
 
+  function selectPen(type: PenType): void {
+    penType = type;
+    handTool = false;
+  }
+
   function setSpeed(value: number): void {
     speed = value;
     speedOpen = false;
@@ -48,12 +54,12 @@
     </button>
   </div>
 
-  <div class="grp" role="group" aria-label="Pen">
+  <div class="grp" role="group" aria-label="Tool">
     <button
       class="btn icon"
-      class:sel={penType === 'marker'}
-      aria-pressed={penType === 'marker'}
-      on:click={() => (penType = 'marker')}
+      class:sel={!handTool && penType === 'marker'}
+      aria-pressed={!handTool && penType === 'marker'}
+      on:click={() => selectPen('marker')}
       aria-label="Marker"
       title="Marker"
     >
@@ -61,13 +67,23 @@
     </button>
     <button
       class="btn icon"
-      class:sel={penType === 'pencil'}
-      aria-pressed={penType === 'pencil'}
-      on:click={() => (penType = 'pencil')}
+      class:sel={!handTool && penType === 'pencil'}
+      aria-pressed={!handTool && penType === 'pencil'}
+      on:click={() => selectPen('pencil')}
       aria-label="Pencil"
       title="Pencil"
     >
       <Icon name="pencil" />
+    </button>
+    <button
+      class="btn icon"
+      class:sel={handTool}
+      aria-pressed={handTool}
+      on:click={() => (handTool = true)}
+      aria-label="Hand: drag to move around the board"
+      title="Hand: drag to move around (H)"
+    >
+      <Icon name="hand" />
     </button>
   </div>
 
