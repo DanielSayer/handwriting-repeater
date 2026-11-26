@@ -4,7 +4,7 @@
   import StrokeLayer from './StrokeLayer.svelte';
   import TimerWidget from './TimerWidget.svelte';
   import { BACKGROUND_IMAGE_ACCEPT, MAX_BACKGROUND_FILE_SIZE } from '../lib/backgroundImage';
-  import { BOARD_ASPECT_RATIO, BOARD_BOUNDS, BOARD_HEIGHT, BOARD_WIDTH } from '../lib/constants';
+  import { BOARD_BOUNDS, PAGE_ASPECT_RATIO, PAGE_RECT } from '../lib/constants';
   import { cameraTransform, centreCamera, cssTransform } from '../lib/camera';
   import { fitBoardToViewport, pointFromPointer, smoothPath } from '../lib/drawing';
   import { clamp, guideMetrics, guideBounds, guideBaselines, constrainGuide } from '../lib/guide';
@@ -55,8 +55,8 @@
 
   let svg: SVGSVGElement;
   let boardStage: HTMLDivElement;
-  let viewportWidth = BOARD_WIDTH;
-  let viewportHeight = BOARD_HEIGHT;
+  let viewportWidth = PAGE_RECT.width;
+  let viewportHeight = PAGE_RECT.height;
   let currentStroke: BoardStroke | null = null;
   let pendingPoints: Point[] = [];
   let strokeFrame: number | undefined;
@@ -93,10 +93,14 @@
   $: if (editingGuide && fontReady && measureContext && guideText && repeatCount) editGuide();
   $: if (editingGuide || replaying) cancelStroke();
   $: if (!editingGuide || replaying) cancelGuideGesture();
-  $: paperSize = fitBoardToViewport(viewportWidth, viewportHeight, BOARD_ASPECT_RATIO);
-  // The viewport is the page fitted to the stage; the camera pans and zooms within it.
-  $: camera = centreCamera(BOARD_BOUNDS, zoom);
-  $: transform = cameraTransform(camera, paperSize, paperSize.width / BOARD_WIDTH);
+  // Zoom 1 fits the original page to the stage. The board extends beyond it on every side.
+  $: viewport = { width: viewportWidth, height: viewportHeight };
+  $: baseScale =
+    fitBoardToViewport(viewportWidth, viewportHeight, PAGE_ASPECT_RATIO).width / PAGE_RECT.width;
+  $: camera = centreCamera(PAGE_RECT, zoom);
+  $: transform = cameraTransform(camera, viewport, baseScale);
+  // Page position inside the paper element, which starts at the board's top-left corner.
+  const pageInPaper = `left:${PAGE_RECT.x - BOARD_BOUNDS.x}px;top:${PAGE_RECT.y - BOARD_BOUNDS.y}px;width:${PAGE_RECT.width}px;height:${PAGE_RECT.height}px`;
   $: handleSize = Math.max(24, 32 / Math.max(Number.EPSILON, transform.scale));
 
   onMount(() => {
@@ -406,18 +410,17 @@
         class="board-viewport"
         class:trace-active={traceMode}
         class:background-drag-active={backgroundDragActive}
-        style={`width:${paperSize.width}px;height:${paperSize.height}px`}
       >
         <div
           class={`paper lines-${lineStyle}`}
-          style={`--paper:${pageColour};transform:${cssTransform(transform)};width:${BOARD_WIDTH}px;height:${BOARD_HEIGHT}px`}
+          style={`--paper:${pageColour};--origin-x:${PAGE_RECT.x - BOARD_BOUNDS.x}px;--origin-y:${PAGE_RECT.y - BOARD_BOUNDS.y}px;transform:${cssTransform(transform, BOARD_BOUNDS)};width:${BOARD_BOUNDS.width}px;height:${BOARD_BOUNDS.height}px`}
         >
           {#if backgroundImage}
             <img
               class="background-image"
               src={backgroundImage.src}
               alt=""
-              style={`opacity:${backgroundOpacity}`}
+              style={`${pageInPaper};opacity:${backgroundOpacity}`}
             />
           {/if}
           <div class="sheen"></div>
@@ -425,7 +428,7 @@
           <svg
             class="drawing-layer"
             bind:this={svg}
-            viewBox={`0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`}
+            viewBox={`${BOARD_BOUNDS.x} ${BOARD_BOUNDS.y} ${BOARD_BOUNDS.width} ${BOARD_BOUNDS.height}`}
             tabindex="0"
             aria-label={editingGuide
               ? 'Guide editor. Arrow keys move, plus and minus resize, Escape finishes editing.'
@@ -496,18 +499,18 @@
             {/if}
           </svg>
           {#if !strokes.length && !guideText && !backgroundImage}
-            <div class="empty-prompt" aria-hidden="true">
+            <div class="empty-prompt" aria-hidden="true" style={pageInPaper}>
               <p>Start writing anywhere</p>
               <small>Or drop a picture here to trace it</small>
             </div>
           {/if}
-          {#if backgroundDragActive}
-            <div class="drop-prompt" aria-hidden="true">
-              <strong>Drop the picture to trace it</strong>
-              <span>PNG, JPEG, or WebP</span>
-            </div>
-          {/if}
         </div>
+        {#if backgroundDragActive}
+          <div class="drop-prompt" aria-hidden="true">
+            <strong>Drop the picture to trace it</strong>
+            <span>PNG, JPEG, or WebP</span>
+          </div>
+        {/if}
       </div>
       {#if timer}
         <TimerWidget startedAt={timer.startedAt} durationMinutes={timer.durationMinutes} />
@@ -566,9 +569,16 @@
   }
   .board-viewport {
     position: relative;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
     border-radius: 5px;
     background: #e9ecef;
+    touch-action: none;
+  }
+  .board-viewport:has(.drawing-layer:focus-visible) {
+    outline: 3px solid var(--blue);
+    outline-offset: -3px;
   }
   :global(.canvas-dropzone) {
     min-height: 0;
@@ -590,15 +600,11 @@
     outline: none;
   }
   .drawing-layer:focus-visible {
-    outline: 3px solid var(--blue);
-    outline-offset: -3px;
+    outline: none;
   }
   .background-image {
     position: absolute;
     z-index: 1;
-    inset: 0;
-    width: 100%;
-    height: 100%;
     object-fit: contain;
     pointer-events: none;
     user-select: none;
@@ -619,24 +625,28 @@
       inset 0 0 0 1px rgba(0, 0, 0, 0.07),
       inset 0 2px 4px rgba(0, 0, 0, 0.06);
   }
+  /* Line patterns are tiled from the page origin (--origin-*) so they line up with the page. */
   .paper.lines-ruled {
-    background-image: repeating-linear-gradient(
+    background-image: linear-gradient(
       to bottom,
       transparent 0 72px,
       #b8d4e7 73px 75px,
       transparent 76px 92px
     );
+    background-size: 100% 92px;
+    background-position: 0 var(--origin-y);
   }
   .paper.lines-dotted {
     background-image: radial-gradient(circle, #a8c9df 1.5px, transparent 1.8px);
     background-size: 16px 92px;
-    background-position: 0 73px;
+    background-position: var(--origin-x) calc(var(--origin-y) + 73px);
   }
   .paper.lines-grid {
     background-image:
       linear-gradient(#cfdfeb 1px, transparent 1px),
       linear-gradient(90deg, #cfdfeb 1px, transparent 1px);
     background-size: 48px 48px;
+    background-position: var(--origin-x) var(--origin-y);
   }
   .drawing-layer {
     position: absolute;
@@ -649,7 +659,6 @@
   .empty-prompt {
     position: absolute;
     z-index: 3;
-    inset: 0;
     display: grid;
     place-content: center;
     justify-items: center;

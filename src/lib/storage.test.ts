@@ -81,7 +81,7 @@ describe('saved board validation', () => {
           ...validStroke,
           points: [
             { x: 0, y: 0 },
-            { x: 961, y: 0 }
+            { x: 2401, y: 0 }
           ]
         }
       ]

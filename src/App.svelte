@@ -7,12 +7,12 @@
   import Tray from './components/Tray.svelte';
   import { captureEvent, captureException } from './lib/analytics';
   import {
-    BOARD_BOUNDS,
     BOARD_STATE_VERSION,
     DEFAULT_BOARD_STATE,
     ZOOM_MAX,
     ZOOM_MIN,
-    ZOOM_STEP
+    ZOOM_STEP,
+    PAGE_RECT
   } from './lib/constants';
   import { prepareBackgroundImage } from './lib/backgroundImage';
   import {
@@ -248,7 +248,7 @@
       strokes,
       backgroundImage,
       backgroundOpacity,
-      region: { ...BOARD_BOUNDS },
+      region: { ...PAGE_RECT },
       pageColour,
       lineStyle,
       guideText,

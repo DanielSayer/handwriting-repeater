@@ -2,15 +2,18 @@ import type { PaperOption, PersistedBoardState, Rect } from './types';
 import { DEFAULT_GUIDE_FONT } from './guideFonts';
 
 export const STORAGE_KEY = 'repeat-whiteboard-v1';
-export const BOARD_WIDTH = 960;
-export const BOARD_HEIGHT = 560;
-export const BOARD_ASPECT_RATIO = BOARD_WIDTH / BOARD_HEIGHT;
-/** Drawable area in board pixels. Strokes and guide text are kept inside it. */
+/** The original fixed page. Board coordinates are measured from its top-left corner. */
+export const PAGE_WIDTH = 960;
+export const PAGE_HEIGHT = 560;
+export const PAGE_ASPECT_RATIO = PAGE_WIDTH / PAGE_HEIGHT;
+export const PAGE_RECT: Readonly<Rect> = { x: 0, y: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT };
+const BOARD_SCALE = 4;
+/** Whole drawable board, in board pixels: four pages each way, centred on the original page. */
 export const BOARD_BOUNDS: Readonly<Rect> = {
-  x: 0,
-  y: 0,
-  width: BOARD_WIDTH,
-  height: BOARD_HEIGHT
+  x: (-(BOARD_SCALE - 1) / 2) * PAGE_WIDTH,
+  y: (-(BOARD_SCALE - 1) / 2) * PAGE_HEIGHT,
+  width: BOARD_SCALE * PAGE_WIDTH,
+  height: BOARD_SCALE * PAGE_HEIGHT
 };
 export const BOARD_STATE_VERSION = 2;
 

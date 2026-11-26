@@ -1,4 +1,4 @@
-import { BOARD_BOUNDS } from './constants';
+import { BOARD_BOUNDS, PAGE_RECT } from './constants';
 import { createGuideRows } from './drawing';
 import type { GuideLayout, Rect } from './types';
 import {
@@ -75,10 +75,10 @@ export function guideBaselines(
     }));
   return createGuideRows(text, repeats).map((row) => ({
     text: row.text,
-    x: BOARD_BOUNDS.x + BOARD_BOUNDS.width * 0.07,
+    x: PAGE_RECT.x + PAGE_RECT.width * 0.07,
     y:
-      BOARD_BOUNDS.y +
-      (row.topPercent / 100) * BOARD_BOUNDS.height +
+      PAGE_RECT.y +
+      (row.topPercent / 100) * PAGE_RECT.height +
       (metrics.ascent - metrics.descent) / 2
   }));
 }

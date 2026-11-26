@@ -1,5 +1,6 @@
 import {
   BOARD_BOUNDS,
+  PAGE_RECT,
   DEFAULT_BOARD_STATE,
   STORAGE_KEY,
   ZOOM_MAX,
@@ -52,8 +53,8 @@ function legacyStrokeToBoard(stroke: BoardStroke): BoardStroke {
     ...stroke,
     points: stroke.points.map((point) => ({
       ...point,
-      x: BOARD_BOUNDS.x + point.x * BOARD_BOUNDS.width,
-      y: BOARD_BOUNDS.y + point.y * BOARD_BOUNDS.height
+      x: PAGE_RECT.x + point.x * PAGE_RECT.width,
+      y: PAGE_RECT.y + point.y * PAGE_RECT.height
     }))
   };
 }

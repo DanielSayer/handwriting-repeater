@@ -51,6 +51,8 @@ export function screenToBoard(point: Point, transform: CameraTransform): Point {
   };
 }
 
-export function cssTransform(transform: CameraTransform): string {
-  return `translate(${transform.translateX}px, ${transform.translateY}px) scale(${transform.scale})`;
+/** CSS transform for an element whose top-left corner sits at board point `origin`. */
+export function cssTransform(transform: CameraTransform, origin: Point = { x: 0, y: 0 }): string {
+  const { x, y } = boardToScreen(origin, transform);
+  return `translate(${x}px, ${y}px) scale(${transform.scale})`;
 }

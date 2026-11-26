@@ -6,10 +6,10 @@ const layout = { x: 0, y: 0, rowSpacing: 50 };
 
 describe('constrainGuide', () => {
   it('keeps the guide block inside the default board', () => {
-    expect(constrainGuide({ ...layout, x: 2000, y: 2000 }, metrics)).toEqual({
+    expect(constrainGuide({ ...layout, x: 9999, y: 9999 }, metrics)).toEqual({
       ...layout,
-      x: 860,
-      y: 500
+      x: 2300,
+      y: 1340
     });
   });
 

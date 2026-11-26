@@ -3,7 +3,7 @@ import { GIFEncoder, applyPalette, quantize } from 'gifenc';
 import { guideMetrics, guideBaselines } from './guide';
 import { guideFontFamily, guideLetterSpacing, loadGuideFont } from './guideFonts';
 import { createReplaySchedule, replayDuration, strokeReplayProgress } from './replay';
-import { BOARD_BOUNDS } from './constants';
+import { PAGE_RECT } from './constants';
 import type { BoardStroke, ExportBoardOptions, LineStyle, Point, Rect } from './types';
 
 type DrawingCanvas = HTMLCanvasElement | OffscreenCanvas;
@@ -201,9 +201,9 @@ async function drawBackgroundImage(
   const naturalHeight = 'naturalHeight' in image ? image.naturalHeight : image.height;
   // The image is contained within the page, matching `object-fit: contain` on the board.
   const scale = exportScale(width, options);
-  const page = toExport(BOARD_BOUNDS, scale, options.region);
-  const pageWidth = BOARD_BOUNDS.width * scale;
-  const pageHeight = BOARD_BOUNDS.height * scale;
+  const page = toExport(PAGE_RECT, scale, options.region);
+  const pageWidth = PAGE_RECT.width * scale;
+  const pageHeight = PAGE_RECT.height * scale;
   const fit = Math.min(pageWidth / naturalWidth, pageHeight / naturalHeight);
   const imageWidth = naturalWidth * fit;
   const imageHeight = naturalHeight * fit;

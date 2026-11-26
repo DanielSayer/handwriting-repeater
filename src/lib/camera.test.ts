@@ -35,5 +35,8 @@ describe('camera', () => {
     expect(cssTransform({ scale: 2, translateX: -10, translateY: 5 })).toBe(
       'translate(-10px, 5px) scale(2)'
     );
+    expect(cssTransform({ scale: 2, translateX: -10, translateY: 5 }, { x: -100, y: 50 })).toBe(
+      'translate(-210px, 105px) scale(2)'
+    );
   });
 });
