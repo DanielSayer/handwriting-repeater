@@ -9,7 +9,9 @@
     cameraTransform,
     clampCamera,
     cssTransform,
+    panCamera,
     sameCamera,
+    zoomCameraAt,
     type Camera
   } from '../lib/camera';
   import { fitBoardToViewport, pointFromPointer, smoothPath } from '../lib/drawing';
@@ -78,6 +80,15 @@
   /** The single pointer gesture in progress. Other pointers are ignored until it ends. */
   type Gesture =
     | { kind: 'stroke'; pointer: number; startedAt: number }
+    | { kind: 'pan'; pointer: number; x: number; y: number }
+    | {
+        kind: 'pinch';
+        pointer: number;
+        second: number;
+        camera: Camera;
+        midpoint: Point;
+        distance: number;
+      }
     | {
         kind: 'guide';
         pointer: number;
@@ -89,6 +100,11 @@
         bounds: Rect;
       };
   let gesture: Gesture | null = null;
+  /** Active touch points (client coordinates), used to detect and track pinches. */
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- read only in handlers, never rendered
+  const touches = new Map<number, Point>();
+  let spaceHeld = false;
+  let viewportElement: HTMLDivElement;
 
   $: if (guideText && measureContext) requestFont(guideFont);
   $: fontReady = loadedFont === guideFont;
@@ -130,11 +146,14 @@
     const observer = new ResizeObserver(measureViewport);
 
     observer.observe(boardStage);
+    // Non-passive so the page does not scroll or zoom while the board pans.
+    viewportElement.addEventListener('wheel', handleWheel, { passive: false });
     window.addEventListener('resize', measureOnNextFrame);
     document.addEventListener('fullscreenchange', measureOnNextFrame);
     measureViewport();
     return () => {
       observer.disconnect();
+      viewportElement.removeEventListener('wheel', handleWheel);
       window.removeEventListener('resize', measureOnNextFrame);
       document.removeEventListener('fullscreenchange', measureOnNextFrame);
       if (resizeAnimationFrame !== undefined) cancelAnimationFrame(resizeAnimationFrame);
@@ -156,47 +175,193 @@
 
   function handlePointerDown(event: PointerEvent): void {
     svg.focus({ preventScroll: true });
+    if (event.pointerType === 'touch') {
+      touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      // A second finger turns a finger stroke or guide drag into a pinch. Pen strokes are kept.
+      if (touches.size === 2 && (!gesture || touches.has(gesture.pointer))) {
+        startPinch(event);
+        return;
+      }
+    }
     if (gesture) return;
-    if (editingGuide) startGuideGesture(event);
+    if (isPanStart(event)) startPan(event);
+    else if (editingGuide) startGuideGesture(event);
     else startStroke(event);
   }
 
   function handlePointerMove(event: PointerEvent): void {
-    if (event.pointerId !== gesture?.pointer) return;
-    if (gesture.kind === 'guide') moveGuideGesture(event, gesture);
+    if (touches.has(event.pointerId))
+      touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (!gesture || !ownsPointer(gesture, event.pointerId)) return;
+    if (gesture.kind === 'pinch') movePinch(gesture);
+    else if (gesture.kind === 'pan') movePan(event, gesture);
+    else if (gesture.kind === 'guide') moveGuideGesture(event, gesture);
     else moveStroke(event, gesture.startedAt);
   }
 
   function handlePointerUp(event: PointerEvent): void {
-    if (event.pointerId !== gesture?.pointer) return;
-    if (gesture.kind === 'guide') endGesture();
-    else endStroke(event, gesture.startedAt);
+    touches.delete(event.pointerId);
+    if (!gesture || !ownsPointer(gesture, event.pointerId)) return;
+    if (gesture.kind === 'stroke') endStroke(event, gesture.startedAt);
+    else endGesture();
   }
 
   function handlePointerCancel(event: PointerEvent): void {
-    if (event.pointerId !== gesture?.pointer) return;
+    touches.delete(event.pointerId);
+    if (!gesture || !ownsPointer(gesture, event.pointerId)) return;
     if (gesture.kind === 'guide') {
       guideLayout = gesture.layout;
       guideSize = gesture.size;
       endGesture();
-    } else cancelStroke();
+    } else if (gesture.kind === 'stroke') cancelStroke();
+    else endGesture();
+  }
+
+  function ownsPointer(current: Gesture, pointer: number): boolean {
+    return current.pointer === pointer || (current.kind === 'pinch' && current.second === pointer);
+  }
+
+  function capture(pointer: number): void {
+    try {
+      viewportElement.setPointerCapture(pointer);
+    } catch {
+      // The pointer may already be gone (e.g. a lifted finger); the gesture still works.
+    }
   }
 
   function beginGesture(event: PointerEvent, next: Gesture): void {
     gesture = next;
-    svg.setPointerCapture(event.pointerId);
+    capture(event.pointerId);
   }
 
   /** Clear the gesture before releasing capture so `lostpointercapture` sees no gesture. */
   function endGesture(): void {
-    const pointer = gesture?.pointer;
+    const ended = gesture;
     gesture = null;
-    if (pointer !== undefined && svg?.hasPointerCapture(pointer))
-      svg.releasePointerCapture(pointer);
+    if (!ended) return;
+    const pointers = ended.kind === 'pinch' ? [ended.pointer, ended.second] : [ended.pointer];
+    for (const pointer of pointers) {
+      if (viewportElement?.hasPointerCapture(pointer))
+        viewportElement.releasePointerCapture(pointer);
+    }
+  }
+
+  function viewportPoint(clientX: number, clientY: number): Point {
+    const rect = viewportElement.getBoundingClientRect();
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  /** Right or middle drag pans; so does a left drag while Space is held. */
+  function isPanStart(event: PointerEvent): boolean {
+    return event.button === 1 || event.button === 2 || (event.button === 0 && spaceHeld);
+  }
+
+  function startPan(event: PointerEvent): void {
+    event.preventDefault();
+    beginGesture(event, {
+      kind: 'pan',
+      pointer: event.pointerId,
+      x: event.clientX,
+      y: event.clientY
+    });
+  }
+
+  function movePan(event: PointerEvent, pan: Extract<Gesture, { kind: 'pan' }>): void {
+    camera = panCamera(camera, event.clientX - pan.x, event.clientY - pan.y, baseScale);
+    pan.x = event.clientX;
+    pan.y = event.clientY;
+  }
+
+  function startPinch(event: PointerEvent): void {
+    // Take over from the first finger's gesture without releasing its pointer capture.
+    if (gesture?.kind === 'stroke') discardStroke();
+    if (gesture?.kind === 'guide') {
+      guideLayout = gesture.layout;
+      guideSize = gesture.size;
+    }
+    const [first, second] = [...touches.entries()];
+    const midpoint = viewportPoint((first[1].x + second[1].x) / 2, (first[1].y + second[1].y) / 2);
+    gesture = {
+      kind: 'pinch',
+      pointer: first[0],
+      second: second[0],
+      camera,
+      midpoint,
+      distance: Math.max(1, Math.hypot(first[1].x - second[1].x, first[1].y - second[1].y))
+    };
+    capture(first[0]);
+    capture(event.pointerId);
+  }
+
+  function movePinch(pinch: Extract<Gesture, { kind: 'pinch' }>): void {
+    const first = touches.get(pinch.pointer);
+    const second = touches.get(pinch.second);
+    if (!first || !second) return;
+    const midpoint = viewportPoint((first.x + second.x) / 2, (first.y + second.y) / 2);
+    const distance = Math.hypot(first.x - second.x, first.y - second.y);
+    // Zoom around where the pinch started, then follow the fingers as they move together.
+    const zoomed = zoomCameraAt(
+      pinch.camera,
+      pinch.midpoint,
+      pinch.camera.zoom * (distance / pinch.distance),
+      viewport,
+      baseScale
+    );
+    camera = panCamera(
+      zoomed,
+      midpoint.x - pinch.midpoint.x,
+      midpoint.y - pinch.midpoint.y,
+      baseScale
+    );
+  }
+
+  function handleWheel(event: WheelEvent): void {
+    event.preventDefault();
+    const unit =
+      event.deltaMode === WheelEvent.DOM_DELTA_LINE
+        ? 16
+        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+          ? viewportHeight
+          : 1;
+    const dx = event.deltaX * unit;
+    const dy = event.deltaY * unit;
+    // Trackpad pinches arrive as ctrl+wheel. Limit each step so a mouse notch is ~20%.
+    if (event.ctrlKey || event.metaKey) {
+      const factor = Math.exp(-clamp(dy, -25, 25) * 0.01);
+      camera = zoomCameraAt(
+        camera,
+        viewportPoint(event.clientX, event.clientY),
+        camera.zoom * factor,
+        viewport,
+        baseScale
+      );
+    } else if (event.shiftKey && dx === 0) {
+      camera = panCamera(camera, -dy, 0, baseScale);
+    } else {
+      camera = panCamera(camera, -dx, -dy, baseScale);
+    }
+  }
+
+  function isEditable(target: EventTarget | null): boolean {
+    return (
+      target instanceof HTMLElement &&
+      (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(target.tagName))
+    );
+  }
+
+  function handleKeyDown(event: KeyboardEvent): void {
+    if (event.code !== 'Space' || isEditable(event.target)) return;
+    if (event.target !== document.body && !viewportElement.contains(event.target as Node)) return;
+    event.preventDefault();
+    spaceHeld = true;
+  }
+
+  function handleKeyUp(event: KeyboardEvent): void {
+    if (event.code === 'Space') spaceHeld = false;
   }
 
   function startStroke(event: PointerEvent): void {
-    if (event.button !== 0 || replaying) return;
+    if (event.button !== 0 || replaying || !svg.contains(event.target as Node)) return;
     beginGesture(event, { kind: 'stroke', pointer: event.pointerId, startedAt: event.timeStamp });
     currentStroke = {
       id: crypto.randomUUID(),
@@ -229,11 +394,15 @@
     pendingPoints = [];
   }
 
-  function cancelStroke(): void {
+  function discardStroke(): void {
     if (strokeFrame !== undefined) cancelAnimationFrame(strokeFrame);
     strokeFrame = undefined;
     pendingPoints = [];
     currentStroke = null;
+  }
+
+  function cancelStroke(): void {
+    discardStroke();
     if (gesture?.kind === 'stroke') endGesture();
   }
 
@@ -346,8 +515,23 @@
     }
   }
 
-  function guideKeyboard(event: KeyboardEvent): void {
-    if (!editingGuide || !guideLayout || !metrics) return;
+  const PAN_KEYS: Record<string, [number, number]> = {
+    ArrowLeft: [1, 0],
+    ArrowRight: [-1, 0],
+    ArrowUp: [0, 1],
+    ArrowDown: [0, -1]
+  };
+
+  function canvasKeyboard(event: KeyboardEvent): void {
+    if (!editingGuide) {
+      const direction = PAN_KEYS[event.key];
+      if (!direction) return;
+      event.preventDefault();
+      const step = event.shiftKey ? 240 : 60;
+      camera = panCamera(camera, direction[0] * step, direction[1] * step, baseScale);
+      return;
+    }
+    if (!guideLayout || !metrics) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       editingGuide = false;
@@ -398,6 +582,12 @@
   }
 </script>
 
+<svelte:window
+  on:keydown={handleKeyDown}
+  on:keyup={handleKeyUp}
+  on:blur={() => (spaceHeld = false)}
+/>
+
 <div class="canvas-workspace">
   {#if fontError}
     <p class="font-warning" role="status">
@@ -419,10 +609,20 @@
     tabindex="-1"
   >
     <div class="board-stage ph-no-capture" bind:this={boardStage}>
+      <!-- svelte-ignore a11y_no_static_element_interactions (pointer gestures; the canvas inside is the focusable, labelled control) -->
       <div
         class="board-viewport"
         class:trace-active={traceMode}
         class:background-drag-active={backgroundDragActive}
+        class:pan-ready={spaceHeld}
+        class:panning={gesture?.kind === 'pan' || gesture?.kind === 'pinch'}
+        bind:this={viewportElement}
+        on:pointerdown={handlePointerDown}
+        on:pointermove={handlePointerMove}
+        on:pointerup={handlePointerUp}
+        on:pointercancel={handlePointerCancel}
+        on:lostpointercapture={handlePointerCancel}
+        on:contextmenu|preventDefault
       >
         <div
           class={`paper lines-${lineStyle}`}
@@ -445,15 +645,10 @@
             tabindex="0"
             aria-label={editingGuide
               ? 'Guide editor. Arrow keys move, plus and minus resize, Escape finishes editing.'
-              : 'Handwriting canvas. Paste an image to use it as a background.'}
+              : 'Handwriting canvas. Arrow keys pan. Paste an image to use it as a background.'}
             role="application"
-            on:pointerdown={handlePointerDown}
-            on:pointermove={handlePointerMove}
-            on:pointerup={handlePointerUp}
-            on:pointercancel={handlePointerCancel}
-            on:lostpointercapture={handlePointerCancel}
             on:paste={handleCanvasPaste}
-            on:keydown={guideKeyboard}
+            on:keydown={canvasKeyboard}
           >
             <g
               aria-hidden="true"
@@ -589,9 +784,23 @@
     background: #e9ecef;
     touch-action: none;
   }
-  .board-viewport:has(.drawing-layer:focus-visible) {
-    outline: 3px solid var(--blue);
-    outline-offset: -3px;
+  .board-viewport.pan-ready,
+  .board-viewport.pan-ready .paper {
+    cursor: grab;
+  }
+  .board-viewport.panning,
+  .board-viewport.panning .paper {
+    cursor: grabbing;
+  }
+  /* Drawn above the paper; an inset outline on the viewport would be covered by it. */
+  .board-viewport:has(.drawing-layer:focus-visible)::after {
+    content: '';
+    position: absolute;
+    z-index: 7;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 3px var(--blue);
+    pointer-events: none;
   }
   :global(.canvas-dropzone) {
     min-height: 0;
