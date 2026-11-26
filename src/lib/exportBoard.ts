@@ -313,7 +313,8 @@ function drawStroke(
 ): void {
   if (points.length < 2) return;
 
-  const scaledPoints = points.map((point) => ({ x: point.x * width, y: point.y * height }));
+  const scale = width / options.boardWidth;
+  const scaledPoints = points.map((point) => ({ x: point.x * scale, y: point.y * scale }));
   context.save();
   context.beginPath();
   context.moveTo(scaledPoints[0].x, scaledPoints[0].y);
@@ -331,7 +332,7 @@ function drawStroke(
   context.lineTo(last.x, last.y);
   context.strokeStyle = colour;
   context.globalAlpha = opacity;
-  context.lineWidth = stroke.width * (width / options.boardWidth);
+  context.lineWidth = stroke.width * scale;
   context.lineCap = 'round';
   context.lineJoin = 'round';
   context.stroke();
@@ -369,7 +370,7 @@ function drawAnimatedPen(
   const scale = width / options.boardWidth;
 
   context.save();
-  context.translate(position.x * width, position.y * height);
+  context.translate(position.x * scale, position.y * scale);
   context.rotate(rotation * (Math.PI / 180));
   context.scale(scale, scale);
   context.lineJoin = 'round';

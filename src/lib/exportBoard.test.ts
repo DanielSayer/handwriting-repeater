@@ -10,8 +10,8 @@ const stroke: BoardStroke = {
   opacity: 1,
   points: [
     { x: 0, y: 0 },
-    { x: 0.5, y: 0 },
-    { x: 0.5, y: 1 }
+    { x: 480, y: 0 },
+    { x: 480, y: 960 }
   ]
 };
 
@@ -46,8 +46,8 @@ describe('partialStrokePoints', () => {
   it('interpolates through the active segment by travelled distance', () => {
     expect(partialStrokePoints(stroke, 0.5)).toEqual([
       { x: 0, y: 0 },
-      { x: 0.5, y: 0 },
-      { x: 0.5, y: 0.25 }
+      { x: 480, y: 0 },
+      { x: 480, y: 240 }
     ]);
   });
 

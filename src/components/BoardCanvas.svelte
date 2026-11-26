@@ -4,7 +4,7 @@
   import StrokeLayer from './StrokeLayer.svelte';
   import TimerWidget from './TimerWidget.svelte';
   import { BACKGROUND_IMAGE_ACCEPT, MAX_BACKGROUND_FILE_SIZE } from '../lib/backgroundImage';
-  import { BOARD_ASPECT_RATIO, BOARD_HEIGHT, BOARD_WIDTH } from '../lib/constants';
+  import { BOARD_ASPECT_RATIO, BOARD_BOUNDS, BOARD_HEIGHT, BOARD_WIDTH } from '../lib/constants';
   import { fitBoardToViewport, pointFromPointer, smoothPath } from '../lib/drawing';
   import { clamp, guideMetrics, guideBounds, guideBaselines, constrainGuide } from '../lib/guide';
   import {
@@ -148,7 +148,7 @@
       colour: penColour,
       width: penSize,
       opacity: penType === 'pencil' ? 0.55 : 1,
-      points: [{ ...pointFromPointer(event, svg), elapsedMs: 0 }]
+      points: [{ ...pointFromPointer(event, svg, BOARD_BOUNDS), elapsedMs: 0 }]
     };
   }
 
@@ -162,7 +162,7 @@
     const pointerEvents = coalescedEvents?.length ? coalescedEvents : [event];
     pendingPoints.push(
       ...pointerEvents.map((pointerEvent) => ({
-        ...pointFromPointer(pointerEvent, svg),
+        ...pointFromPointer(pointerEvent, svg, BOARD_BOUNDS),
         elapsedMs: Math.max(0, pointerEvent.timeStamp - currentStrokeStartedAt)
       }))
     );
@@ -214,12 +214,14 @@
         drawing = false;
         return;
       }
+      // Nudge a tap into a tiny segment so it renders as a dot, staying inside the board.
       const point = currentStroke.points[0];
+      const nudge = 0.1;
       currentStroke.points = [
         point,
         {
-          x: point.x >= 1 ? point.x - 0.0001 : point.x + 0.0001,
-          y: point.y >= 1 ? point.y - 0.0001 : point.y + 0.0001,
+          x: point.x >= BOARD_BOUNDS.x + BOARD_BOUNDS.width ? point.x - nudge : point.x + nudge,
+          y: point.y >= BOARD_BOUNDS.y + BOARD_BOUNDS.height ? point.y - nudge : point.y + nudge,
           elapsedMs: Math.max(16, event.timeStamp - currentStrokeStartedAt)
         }
       ];
@@ -276,11 +278,11 @@
     if (event.button !== 0 || replaying || guideGesture || !guideLayout || !bounds || !action)
       return;
     event.preventDefault();
-    const point = pointFromPointer(event, svg);
+    const point = pointFromPointer(event, svg, BOARD_BOUNDS);
     guideGesture = {
       pointer: event.pointerId,
-      x: point.x * BOARD_WIDTH,
-      y: point.y * BOARD_HEIGHT,
+      x: point.x,
+      y: point.y,
       layout: { ...guideLayout },
       size: guideSize,
       scale: action === 'scale',
@@ -292,9 +294,9 @@
   function moveGuideGesture(event: PointerEvent): void {
     const gesture = guideGesture;
     if (!gesture || event.pointerId !== gesture.pointer || !metrics) return;
-    const point = pointFromPointer(event, svg);
-    const dx = point.x * BOARD_WIDTH - gesture.x;
-    const dy = point.y * BOARD_HEIGHT - gesture.y;
+    const point = pointFromPointer(event, svg, BOARD_BOUNDS);
+    const dx = point.x - gesture.x;
+    const dy = point.y - gesture.y;
     if (gesture.scale) {
       const { width, height } = gesture.bounds;
       const scale = Math.max(
@@ -472,7 +474,7 @@
             {/if}
             {#if currentStroke}
               <path
-                d={smoothPath(currentStroke.points, BOARD_WIDTH, BOARD_HEIGHT)}
+                d={smoothPath(currentStroke.points)}
                 fill="none"
                 stroke={currentStroke.colour}
                 stroke-width={currentStroke.width}

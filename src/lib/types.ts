@@ -3,6 +3,7 @@ import type { GuideFontId } from './guideFonts';
 export type PenType = 'marker' | 'pencil';
 export type LineStyle = 'ruled' | 'dotted' | 'grid' | 'blank';
 
+/** Board-space position in pixels (origin at the page's top-left corner). */
 export interface Point {
   x: number;
   y: number;
@@ -39,7 +40,16 @@ export interface GuideLayout {
   rowSpacing: number;
 }
 
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface PersistedBoardState {
+  /** Storage schema version. Version 1 (absent) stored points as 0–1 page fractions. */
+  version: number;
   strokes: BoardStroke[];
   backgroundImage: BoardBackground | null;
   backgroundOpacity: number;

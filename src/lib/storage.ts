@@ -1,6 +1,13 @@
-import { DEFAULT_BOARD_STATE, STORAGE_KEY, ZOOM_MAX, ZOOM_MIN, migrateColour } from './constants';
+import {
+  BOARD_BOUNDS,
+  DEFAULT_BOARD_STATE,
+  STORAGE_KEY,
+  ZOOM_MAX,
+  ZOOM_MIN,
+  migrateColour
+} from './constants';
 import { isGuideFont } from './guideFonts';
-import type { BoardStroke, PersistedBoardState, Point } from './types';
+import type { BoardStroke, PersistedBoardState, Point, Rect } from './types';
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -16,17 +23,20 @@ function colour(value: unknown): value is string {
   return typeof value === 'string' && /^#[\da-f]{6}$/i.test(value);
 }
 
-function point(value: unknown): value is Point {
-  return (
+// Version 1 stored points as fractions of the page.
+const LEGACY_POINT_SPACE: Rect = { x: 0, y: 0, width: 1, height: 1 };
+
+function pointIn(bounds: Rect) {
+  return (value: unknown): value is Point =>
     record(value) &&
-    numberInRange(value.x, 0, 1) &&
-    numberInRange(value.y, 0, 1) &&
-    (value.elapsedMs === undefined || numberInRange(value.elapsedMs, 0, Number.MAX_SAFE_INTEGER))
-  );
+    numberInRange(value.x, bounds.x, bounds.x + bounds.width) &&
+    numberInRange(value.y, bounds.y, bounds.y + bounds.height) &&
+    (value.elapsedMs === undefined || numberInRange(value.elapsedMs, 0, Number.MAX_SAFE_INTEGER));
 }
 
-function stroke(value: unknown): value is BoardStroke {
-  return (
+function strokeIn(bounds: Rect) {
+  const point = pointIn(bounds);
+  return (value: unknown): value is BoardStroke =>
     record(value) &&
     typeof value.id === 'string' &&
     colour(value.colour) &&
@@ -34,8 +44,18 @@ function stroke(value: unknown): value is BoardStroke {
     numberInRange(value.opacity, 0, 1) &&
     Array.isArray(value.points) &&
     value.points.length >= 2 &&
-    value.points.every(point)
-  );
+    value.points.every(point);
+}
+
+function legacyStrokeToBoard(stroke: BoardStroke): BoardStroke {
+  return {
+    ...stroke,
+    points: stroke.points.map((point) => ({
+      ...point,
+      x: BOARD_BOUNDS.x + point.x * BOARD_BOUNDS.width,
+      y: BOARD_BOUNDS.y + point.y * BOARD_BOUNDS.height
+    }))
+  };
 }
 
 /** Treat local storage as untrusted input. Recover valid fields independently. */
@@ -43,8 +63,10 @@ export function parseBoardState(value: unknown): PersistedBoardState {
   const state = { ...DEFAULT_BOARD_STATE, strokes: [] as BoardStroke[] };
   if (!record(value)) return state;
   if (Array.isArray(value.strokes)) {
+    const legacy = value.version === undefined;
+    const valid = value.strokes.filter(strokeIn(legacy ? LEGACY_POINT_SPACE : BOARD_BOUNDS));
     const ids = new Set<string>();
-    state.strokes = value.strokes.filter(stroke).map((item) => {
+    state.strokes = (legacy ? valid.map(legacyStrokeToBoard) : valid).map((item) => {
       let id = item.id;
       while (ids.has(id)) id += '-duplicate';
       ids.add(id);
@@ -78,8 +100,8 @@ export function parseBoardState(value: unknown): PersistedBoardState {
   if (numberInRange(value.guideSize, 12, 160)) state.guideSize = value.guideSize;
   if (
     record(value.guideLayout) &&
-    numberInRange(value.guideLayout.x, 0, 960) &&
-    numberInRange(value.guideLayout.y, 0, 560) &&
+    numberInRange(value.guideLayout.x, BOARD_BOUNDS.x, BOARD_BOUNDS.x + BOARD_BOUNDS.width) &&
+    numberInRange(value.guideLayout.y, BOARD_BOUNDS.y, BOARD_BOUNDS.y + BOARD_BOUNDS.height) &&
     numberInRange(value.guideLayout.rowSpacing, 16, 160)
   ) {
     state.guideLayout = {

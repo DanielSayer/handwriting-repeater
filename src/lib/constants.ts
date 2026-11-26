@@ -1,10 +1,18 @@
-import type { PaperOption, PersistedBoardState } from './types';
+import type { PaperOption, PersistedBoardState, Rect } from './types';
 import { DEFAULT_GUIDE_FONT } from './guideFonts';
 
 export const STORAGE_KEY = 'repeat-whiteboard-v1';
 export const BOARD_WIDTH = 960;
 export const BOARD_HEIGHT = 560;
 export const BOARD_ASPECT_RATIO = BOARD_WIDTH / BOARD_HEIGHT;
+/** Drawable area in board pixels. Strokes and guide text are kept inside it. */
+export const BOARD_BOUNDS: Readonly<Rect> = {
+  x: 0,
+  y: 0,
+  width: BOARD_WIDTH,
+  height: BOARD_HEIGHT
+};
+export const BOARD_STATE_VERSION = 2;
 
 // Dry-erase marker palette.
 export const INK_COLOURS = [
@@ -60,6 +68,7 @@ export const ZOOM_MAX = 2;
 export const ZOOM_STEP = 0.25;
 
 export const DEFAULT_BOARD_STATE: PersistedBoardState = {
+  version: BOARD_STATE_VERSION,
   strokes: [],
   backgroundImage: null,
   backgroundOpacity: 1,

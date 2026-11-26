@@ -6,7 +6,13 @@
   import TopBar from './components/TopBar.svelte';
   import Tray from './components/Tray.svelte';
   import { captureEvent, captureException } from './lib/analytics';
-  import { DEFAULT_BOARD_STATE, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './lib/constants';
+  import {
+    BOARD_STATE_VERSION,
+    DEFAULT_BOARD_STATE,
+    ZOOM_MAX,
+    ZOOM_MIN,
+    ZOOM_STEP
+  } from './lib/constants';
   import { prepareBackgroundImage } from './lib/backgroundImage';
   import {
     createReplaySchedule,
@@ -56,6 +62,7 @@
   $: playbackRate = playbackRateForSpeed(speed);
   $: replayDuration = getReplayDuration(createReplaySchedule(strokes, playbackRate));
   $: persistedState = {
+    version: BOARD_STATE_VERSION,
     strokes,
     backgroundImage,
     backgroundOpacity,

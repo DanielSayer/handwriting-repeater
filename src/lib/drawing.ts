@@ -1,4 +1,4 @@
-import type { GuideRow, Point } from './types';
+import type { GuideRow, Point, Rect } from './types';
 
 export function fitBoardToViewport(
   viewportWidth: number,
@@ -14,28 +14,41 @@ export function fitBoardToViewport(
   };
 }
 
-export function pointFromPointer(event: PointerEvent, element: SVGSVGElement): Point {
+/** Map a pointer to the SVG's viewBox (board pixels), clamped to `bounds`. */
+export function pointFromPointer(
+  event: Pick<PointerEvent, 'clientX' | 'clientY'>,
+  element: SVGSVGElement,
+  bounds: Rect
+): Point {
   const rect = element.getBoundingClientRect();
+  const box = element.viewBox.baseVal;
   return {
-    x: clamp((event.clientX - rect.left) / rect.width, 0, 1),
-    y: clamp((event.clientY - rect.top) / rect.height, 0, 1)
+    x: clamp(
+      box.x + ((event.clientX - rect.left) / rect.width) * box.width,
+      bounds.x,
+      bounds.x + bounds.width
+    ),
+    y: clamp(
+      box.y + ((event.clientY - rect.top) / rect.height) * box.height,
+      bounds.y,
+      bounds.y + bounds.height
+    )
   };
 }
 
-export function smoothPath(points: Point[], width: number, height: number): string {
+export function smoothPath(points: Point[]): string {
   if (points.length === 0) return '';
 
-  const scaled = points.map((point) => ({ x: point.x * width, y: point.y * height }));
-  if (scaled.length === 1) return `M ${scaled[0].x} ${scaled[0].y}`;
+  let path = `M ${points[0].x} ${points[0].y}`;
+  if (points.length === 1) return path;
 
-  let path = `M ${scaled[0].x} ${scaled[0].y}`;
-  for (let index = 1; index < scaled.length - 1; index += 1) {
-    const midX = (scaled[index].x + scaled[index + 1].x) / 2;
-    const midY = (scaled[index].y + scaled[index + 1].y) / 2;
-    path += ` Q ${scaled[index].x} ${scaled[index].y} ${midX} ${midY}`;
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const midX = (points[index].x + points[index + 1].x) / 2;
+    const midY = (points[index].y + points[index + 1].y) / 2;
+    path += ` Q ${points[index].x} ${points[index].y} ${midX} ${midY}`;
   }
 
-  const last = scaled.at(-1)!;
+  const last = points.at(-1)!;
   return `${path} L ${last.x} ${last.y}`;
 }
 
