@@ -4,6 +4,7 @@ import {
   exportSize,
   intersectRects,
   strokeBounds,
+  strokesInRect,
   unionRects
 } from './exportRegion';
 import type { BoardStroke } from './types';
@@ -47,6 +48,24 @@ describe('strokeBounds', () => {
 
   it('returns null with no strokes', () => {
     expect(strokeBounds([])).toBeNull();
+  });
+});
+
+describe('strokesInRect', () => {
+  it('keeps strokes that touch the rect, including by their width', () => {
+    const inside = stroke([
+      [10, 10],
+      [20, 20]
+    ]);
+    const edge = stroke([
+      [964, 100],
+      [990, 100]
+    ]);
+    const outside = stroke([
+      [2000, 2000],
+      [2100, 2000]
+    ]);
+    expect(strokesInRect([inside, edge, outside], page)).toEqual([inside, edge]);
   });
 });
 

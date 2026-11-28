@@ -6,6 +6,8 @@
   import type { StrokeReplayTiming } from '../lib/replay';
   import type { BoardStroke } from '../lib/types';
   export let strokes: BoardStroke[];
+  /** Strokes to animate while replaying; the rest stay drawn. */
+  export let replayStrokes: BoardStroke[];
   export let traceMode: boolean;
   export let replaying: boolean;
   export let replayNonce: number;
@@ -29,8 +31,12 @@
     }
     return path;
   }
-  $: renderedStrokes = strokes.map((stroke) => ({ stroke, path: pathFor(stroke) }));
-  $: replaySchedule = createReplaySchedule(strokes, playbackRate);
+  $: replaySet = replaying ? new Set(replayStrokes) : null;
+  $: animated = replaySet ? strokes.filter((stroke) => replaySet.has(stroke)) : strokes;
+  $: still = replaySet ? strokes.filter((stroke) => !replaySet.has(stroke)) : [];
+  $: renderedStrokes = animated.map((stroke) => ({ stroke, path: pathFor(stroke) }));
+  $: stillStrokes = still.map((stroke) => ({ stroke, path: pathFor(stroke) }));
+  $: replaySchedule = createReplaySchedule(animated, playbackRate);
   $: if (replaying) void startPenAnimation(replayNonce);
   $: if (!replaying) stopPenAnimation();
   onDestroy(() => {
@@ -65,7 +71,7 @@
 
   function updatePenPosition(index: number, elapsedSeconds: number): void {
     const path = replayPaths[index];
-    const stroke = strokes[index];
+    const stroke = animated[index];
     if (!path || !stroke) return;
 
     const timing = timingFor(index);
@@ -87,7 +93,7 @@
   }
 
   function updateReplayPaths(elapsedSeconds: number): number {
-    while (nextStroke < strokes.length) {
+    while (nextStroke < animated.length) {
       const timing = timingFor(nextStroke);
       const path = replayPaths[nextStroke];
       if (elapsedSeconds >= timing.delaySeconds + timing.durationSeconds) {
@@ -100,7 +106,7 @@
       }
       if (elapsedSeconds < timing.delaySeconds) return -1;
       if (path) {
-        const progress = strokeReplayProgress(strokes[nextStroke], timing, elapsedSeconds);
+        const progress = strokeReplayProgress(animated[nextStroke], timing, elapsedSeconds);
         path.style.strokeDashoffset = String(1 - progress);
         path.style.visibility = progress > 0 ? 'visible' : 'hidden';
       }
@@ -114,6 +120,17 @@
   }
 </script>
 
+{#each stillStrokes as { stroke, path } (stroke.id)}
+  <path
+    d={path}
+    fill="none"
+    stroke={stroke.colour}
+    stroke-width={stroke.width}
+    stroke-opacity={stroke.opacity}
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+{/each}
 {#key replayNonce}
   <g class:replaying>
     {#if traceMode && replaying}

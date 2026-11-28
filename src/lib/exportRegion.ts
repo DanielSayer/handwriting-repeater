@@ -26,6 +26,26 @@ export function strokeBounds(strokes: BoardStroke[]): Rect | null {
     : null;
 }
 
+const boundsCache = new WeakMap<BoardStroke, Rect | null>();
+
+/** Strokes whose box touches `rect`. Used to replay only what is on screen. */
+export function strokesInRect(strokes: BoardStroke[], rect: Rect): BoardStroke[] {
+  return strokes.filter((stroke) => {
+    let box = boundsCache.get(stroke);
+    if (box === undefined) {
+      box = strokeBounds([stroke]);
+      boundsCache.set(stroke, box);
+    }
+    return box !== null && rectsTouch(box, rect);
+  });
+}
+
+function rectsTouch(a: Rect, b: Rect): boolean {
+  return (
+    a.x <= b.x + b.width && b.x <= a.x + a.width && a.y <= b.y + b.height && b.y <= a.y + a.height
+  );
+}
+
 export function unionRects(rects: (Rect | null | undefined)[]): Rect | null {
   const present = rects.filter((rect): rect is Rect => Boolean(rect));
   if (!present.length) return null;
