@@ -6,6 +6,8 @@ export type ExportArea = 'content' | 'view';
 const CONTENT_PADDING = 32;
 /** Content smaller than this is centred in a region this size, so a few letters are not blown up. */
 const MIN_CONTENT_SIZE = { width: 480, height: 280 };
+/** How far the replay pen reaches up and right of its nib, shadow included. */
+const PEN_REACH = { top: 72, right: 60 };
 
 export function strokeBounds(strokes: BoardStroke[]): Rect | null {
   let left = Infinity;
@@ -24,6 +26,14 @@ export function strokeBounds(strokes: BoardStroke[]): Rect | null {
   return Number.isFinite(left)
     ? { x: left, y: top, width: right - left, height: bottom - top }
     : null;
+}
+
+/** Grow stroke bounds so the replay pen, drawn up and right of the nib, is not clipped. */
+export function withPenReach(rect: Rect | null): Rect | null {
+  if (!rect) return null;
+  const top = Math.max(0, PEN_REACH.top - CONTENT_PADDING);
+  const right = Math.max(0, PEN_REACH.right - CONTENT_PADDING);
+  return { x: rect.x, y: rect.y - top, width: rect.width + right, height: rect.height + top };
 }
 
 const boundsCache = new WeakMap<BoardStroke, Rect | null>();

@@ -5,7 +5,13 @@ import { guideFontFamily, guideLetterSpacing, loadGuideFont } from './guideFonts
 import { createReplaySchedule, replayDuration, strokeReplayProgress } from './replay';
 import { containRect } from './backgroundImage';
 import { BOARD_BOUNDS, PAGE_RECT } from './constants';
-import { contentRegion, exportSize, strokeBounds, strokesInRect } from './exportRegion';
+import {
+  contentRegion,
+  exportSize,
+  strokeBounds,
+  strokesInRect,
+  withPenReach
+} from './exportRegion';
 import type { BoardStroke, ExportBoardOptions, LineStyle, Point, Rect } from './types';
 
 type DrawingCanvas = HTMLCanvasElement | OffscreenCanvas;
@@ -212,7 +218,7 @@ async function loadPicture(background: NonNullable<ExportBoardOptions['backgroun
 function resolveRegion(options: ExportBoardOptions, picture: Picture | null): Rect {
   if (options.region !== 'content') return options.region;
   return contentRegion(
-    [strokeBounds(options.strokes), guideRect(options), picture?.rect],
+    [withPenReach(strokeBounds(options.strokes)), guideRect(options), picture?.rect],
     BOARD_BOUNDS,
     PAGE_RECT
   );

@@ -188,7 +188,8 @@ describe('GIF encoding', () => {
 
     // A short stroke is centred in a 480x280 region, exported at double size.
     expect(size).toEqual([960, 560]);
-    expect(calls).toContainEqual({ method: 'moveTo', args: [380, 280] });
+    // Off-centre down and left, leaving room for the replay pen above and right.
+    expect(calls).toContainEqual({ method: 'moveTo', args: [352, 320] });
   });
 
   it('writes an animated GIF with no repeat extension', () => {
