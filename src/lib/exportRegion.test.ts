@@ -4,7 +4,9 @@ import {
   exportSize,
   intersectRects,
   strokeBounds,
-  unionRects
+  strokesInRect,
+  unionRects,
+  withPenReach
 } from './exportRegion';
 import type { BoardStroke } from './types';
 
@@ -47,6 +49,38 @@ describe('strokeBounds', () => {
 
   it('returns null with no strokes', () => {
     expect(strokeBounds([])).toBeNull();
+  });
+});
+
+describe('withPenReach', () => {
+  it('leaves room above and right of strokes for the replay pen', () => {
+    const rect = { x: 100, y: 50, width: 200, height: 20 };
+    const region = contentRegion([withPenReach(rect)], bounds, page);
+    // Pen reaches 72 up and 60 right of the nib.
+    expect(region.y).toBeLessThanOrEqual(50 - 72);
+    expect(region.x + region.width).toBeGreaterThanOrEqual(300 + 60);
+  });
+
+  it('passes through missing bounds', () => {
+    expect(withPenReach(null)).toBeNull();
+  });
+});
+
+describe('strokesInRect', () => {
+  it('keeps strokes that touch the rect, including by their width', () => {
+    const inside = stroke([
+      [10, 10],
+      [20, 20]
+    ]);
+    const edge = stroke([
+      [964, 100],
+      [990, 100]
+    ]);
+    const outside = stroke([
+      [2000, 2000],
+      [2100, 2000]
+    ]);
+    expect(strokesInRect([inside, edge, outside], page)).toEqual([inside, edge]);
   });
 });
 

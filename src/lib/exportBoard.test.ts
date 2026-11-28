@@ -133,6 +133,14 @@ describe('GIF encoding', () => {
             { x: 100, y: 200, elapsedMs: 0 },
             { x: 150, y: 200, elapsedMs: 10 }
           ]
+        },
+        {
+          ...stroke,
+          id: 'off-view',
+          points: [
+            { x: 2000, y: 1000, elapsedMs: 0 },
+            { x: 2100, y: 1000, elapsedMs: 10 }
+          ]
         }
       ],
       backgroundImage: null,
@@ -151,6 +159,8 @@ describe('GIF encoding', () => {
     expect(size).toEqual([960, 480]);
     expect(calls).toContainEqual({ method: 'moveTo', args: [0, 0] });
     expect(calls).toContainEqual({ method: 'lineTo', args: [100, 0] });
+    // The stroke outside the view is left out entirely.
+    expect(calls).not.toContainEqual({ method: 'moveTo', args: [3800, 1600] });
 
     calls.length = 0;
     await encodeBoardGif({
@@ -178,7 +188,8 @@ describe('GIF encoding', () => {
 
     // A short stroke is centred in a 480x280 region, exported at double size.
     expect(size).toEqual([960, 560]);
-    expect(calls).toContainEqual({ method: 'moveTo', args: [380, 280] });
+    // Off-centre down and left, leaving room for the replay pen above and right.
+    expect(calls).toContainEqual({ method: 'moveTo', args: [352, 320] });
   });
 
   it('writes an animated GIF with no repeat extension', () => {

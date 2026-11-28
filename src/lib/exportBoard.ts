@@ -5,7 +5,13 @@ import { guideFontFamily, guideLetterSpacing, loadGuideFont } from './guideFonts
 import { createReplaySchedule, replayDuration, strokeReplayProgress } from './replay';
 import { containRect } from './backgroundImage';
 import { BOARD_BOUNDS, PAGE_RECT } from './constants';
-import { contentRegion, exportSize, strokeBounds } from './exportRegion';
+import {
+  contentRegion,
+  exportSize,
+  strokeBounds,
+  strokesInRect,
+  withPenReach
+} from './exportRegion';
 import type { BoardStroke, ExportBoardOptions, LineStyle, Point, Rect } from './types';
 
 type DrawingCanvas = HTMLCanvasElement | OffscreenCanvas;
@@ -29,7 +35,10 @@ export interface GifFrame {
 export async function encodeBoardGif(input: ExportBoardOptions): Promise<Blob> {
   if (input.guideText) await loadGuideFont(input.guideFont);
   const picture = input.backgroundImage ? await loadPicture(input.backgroundImage) : null;
-  const options: ResolvedOptions = { ...input, region: resolveRegion(input, picture) };
+  const region = resolveRegion(input, picture);
+  // A view export replays only the strokes in view, so off-screen writing adds no dead time.
+  const strokes = input.region === 'content' ? input.strokes : strokesInRect(input.strokes, region);
+  const options: ResolvedOptions = { ...input, strokes, region };
   const { width, height } = exportSize(options.region);
   const canvas = createCanvas(width, height);
   const context = getCanvasContext(canvas);
@@ -209,7 +218,7 @@ async function loadPicture(background: NonNullable<ExportBoardOptions['backgroun
 function resolveRegion(options: ExportBoardOptions, picture: Picture | null): Rect {
   if (options.region !== 'content') return options.region;
   return contentRegion(
-    [strokeBounds(options.strokes), guideRect(options), picture?.rect],
+    [withPenReach(strokeBounds(options.strokes)), guideRect(options), picture?.rect],
     BOARD_BOUNDS,
     PAGE_RECT
   );

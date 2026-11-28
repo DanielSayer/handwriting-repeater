@@ -15,7 +15,7 @@
     PAGE_RECT
   } from './lib/constants';
   import { nextZoomLevel } from './lib/camera';
-  import type { ExportArea } from './lib/exportRegion';
+  import { strokesInRect, type ExportArea } from './lib/exportRegion';
   import {
     createReplaySchedule,
     playbackRateForSpeed,
@@ -58,13 +58,16 @@
   let replaying = false;
   let replayNonce = 0;
   let replayTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Strokes being replayed, fixed when a replay starts so panning does not change it. */
+  let replayStrokes: BoardStroke[] = [];
   let guideDialogOpen = false;
   let timer: { startedAt: number; durationMinutes: number } | null = null;
   let exporting = false;
   let exportError = '';
 
   $: playbackRate = playbackRateForSpeed(speed);
-  $: replayDuration = getReplayDuration(createReplaySchedule(strokes, playbackRate));
+  // Replay only what is on screen: strokes far off the view would just add dead time.
+  $: visibleStrokes = strokesInRect(strokes, visibleRect);
   $: persistedState = {
     version: BOARD_STATE_VERSION,
     strokes,
@@ -157,20 +160,20 @@
   }
 
   async function replay(automaticLoop = false): Promise<void> {
-    if (!strokes.length) {
-      return;
-    }
+    if (!visibleStrokes.length) return;
 
     stopReplay();
     const nonce = replayNonce;
     editingGuide = false;
     editingBackground = false;
     await tick();
-    if (nonce !== replayNonce || !strokes.length) return;
+    if (nonce !== replayNonce || !visibleStrokes.length) return;
+    replayStrokes = visibleStrokes;
+    const replayDuration = getReplayDuration(createReplaySchedule(replayStrokes, playbackRate));
     replaying = true;
     if (!automaticLoop) {
       captureEvent('replay_started', {
-        stroke_count: strokes.length,
+        stroke_count: replayStrokes.length,
         duration_seconds: replayDuration,
         playback_rate: playbackRate,
         loop_enabled: loopMode,
@@ -351,6 +354,7 @@
             {traceMode}
             {replaying}
             {replayNonce}
+            {replayStrokes}
             {playbackRate}
             {guideText}
             {repeatCount}
@@ -420,7 +424,7 @@
         canUndo={strokes.length > 0}
         canRedo={redoStack.length > 0}
         canClear={strokes.length > 0 || Boolean(guideText)}
-        canReplay={strokes.length > 0}
+        canReplay={visibleStrokes.length > 0}
         {replaying}
         onUndo={undo}
         onRedo={redo}

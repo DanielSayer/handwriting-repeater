@@ -49,6 +49,7 @@
   export let traceMode: boolean;
   export let replaying: boolean;
   export let replayNonce: number;
+  export let replayStrokes: BoardStroke[];
   export let playbackRate: number;
   export let guideText: string;
   export let guideFont: GuideFontId;
@@ -817,7 +818,14 @@
                 <text x={row.x} y={row.y} xml:space="preserve">{row.text}</text>
               {/each}
             </g>
-            <StrokeLayer {strokes} {traceMode} {replaying} {replayNonce} {playbackRate} />
+            <StrokeLayer
+              {strokes}
+              {replayStrokes}
+              {traceMode}
+              {replaying}
+              {replayNonce}
+              {playbackRate}
+            />
             {#if editingGuide && bounds}
               <g aria-hidden="true" class="guide-selection">
                 <rect
